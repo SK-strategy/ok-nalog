@@ -1,0 +1,70 @@
+# Local services for fedor. Bring up the whole stack with:
+#     docker compose up -d
+#
+# After first start, grab the Convex admin key:
+#     docker compose exec convex-backend ./generate_admin_key.sh
+# Then drop it into .env as CONVEX_SELF_HOSTED_ADMIN_KEY.
+#
+# Endpoints (host-side):
+#   - Convex backend       http://127.0.0.1:3210
+#   - Convex HTTP actions  http://127.0.0.1:3211
+#   - Convex dashboard     http://127.0.0.1:6791
+#   - Postgres             postgres://fedor:fedor@127.0.0.1:5432/fedor
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: fedor
+      POSTGRES_PASSWORD: fedor
+      POSTGRES_DB: fedor
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U fedor -d fedor']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  convex-backend:
+    image: ghcr.io/get-convex/convex-backend:latest
+    restart: unless-stopped
+    stop_grace_period: 10s
+    stop_signal: SIGINT
+    ports:
+      - '3210:3210'
+      - '3211:3211'
+    environment:
+      INSTANCE_NAME: ${INSTANCE_NAME:-fedor}
+      INSTANCE_SECRET: ${INSTANCE_SECRET:-}
+      CONVEX_CLOUD_ORIGIN: ${CONVEX_CLOUD_ORIGIN:-http://127.0.0.1:3210}
+      CONVEX_SITE_ORIGIN: ${CONVEX_SITE_ORIGIN:-http://127.0.0.1:3211}
+      # Point Convex at the self-hosted Postgres above (intra-container DNS).
+      POSTGRES_URL: postgres://fedor:fedor@postgres:5432
+      DO_NOT_REQUIRE_SSL: 'true'
+      DISABLE_BEACON: ${DISABLE_BEACON:-true}
+      REDACT_LOGS_TO_CLIENT: ${REDACT_LOGS_TO_CLIENT:-false}
+    volumes:
+      - convex_data:/convex/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  convex-dashboard:
+    image: ghcr.io/get-convex/convex-dashboard:latest
+    restart: unless-stopped
+    stop_grace_period: 10s
+    stop_signal: SIGINT
+    ports:
+      - '6791:6791'
+    environment:
+      NEXT_PUBLIC_DEPLOYMENT_URL: ${CONVEX_SELF_HOSTED_URL:-http://127.0.0.1:3210}
+    depends_on:
+      - convex-backend
+
+volumes:
+  postgres_data:
+  convex_data:

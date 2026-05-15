@@ -1,0 +1,31 @@
+{
+  "name": "@fedor/convex",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "clean": "git clean -xdf .cache .turbo node_modules",
+    "codegen": "pnpm with-env convex codegen",
+    "deploy": "pnpm with-env convex deploy",
+    "dev": "pnpm with-env convex dev --typecheck=disable",
+    "format": "prettier --check . --ignore-path ../../.gitignore",
+    "lint": "eslint --flag unstable_native_nodejs_ts_config",
+    "typecheck": "tsc --noEmit",
+    "with-env": "dotenv -e ../../.env --"
+  },
+  "prettier": "@fedor/prettier-config",
+  "dependencies": {
+    "convex": "catalog:"
+  },
+  "devDependencies": {
+    "@fedor/eslint-config": "workspace:*",
+    "@fedor/prettier-config": "workspace:*",
+    "@fedor/tsconfig": "workspace:*",
+    "dotenv-cli": "^10.0.0",
+    "eslint": "catalog:",
+    "prettier": "catalog:",
+    "typescript": "catalog:"
+  }
+}

@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from 'next/font/google'
 
 import { cn } from '@fedor/ui'
 
+import { ConvexClientProvider } from '~/app/convex-provider'
+
 import '~/app/styles.css'
 
 export const metadata: Metadata = {
@@ -36,7 +38,7 @@ export default function RootLayout(props: { children: React.ReactNode }) {
           geistMono.variable,
         )}
       >
-        {props.children}
+        <ConvexClientProvider>{props.children}</ConvexClientProvider>
       </body>
     </html>
   )

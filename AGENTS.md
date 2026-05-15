@@ -11,6 +11,8 @@ grow. All workspace packages share the `@fedor/*` scope.
 ```
 apps/
   web/               # Main Next.js application (FSD inside)
+backend/
+  convex/            # @fedor/convex — Convex backend (schema + functions)
 packages/
   ui/                # @fedor/ui — shadcn-based component library
   validators/        # Shared Zod schemas
@@ -27,6 +29,7 @@ turbo/               # turbo generators (used by `pnpm ui-add`, etc.)
 
 - **Runtime**: Node ≥ 22.21, pnpm ≥ 10.19
 - **App framework**: Next.js 16 (App Router) + React 19
+- **Backend**: Convex (self-hosted, Postgres-backed) via `@fedor/convex`
 - **Styling**: Tailwind CSS v4 (CSS-first, theme via `@fedor/tailwind-config`)
 - **Validation**: Zod 4
 - **Quality**: ESLint 9 (flat config) + Prettier 3 + Steiger (FSD linter)
@@ -146,6 +149,52 @@ builders by both the sort and wrap plugins.
 Config: [`steiger.config.ts`](./steiger.config.ts) at the repo root.
 Loads `@feature-sliced/steiger-plugin`'s recommended ruleset. Run via
 `pnpm lint:fsd`.
+
+## Convex (self-hosted) — `@fedor/convex`
+
+Backend lives in `backend/convex/convex/` (schema + functions). The web
+app consumes the generated `api` via `import { api } from '@fedor/convex'`.
+
+### One-time setup
+
+1. Copy `.env.example` → `.env` and leave `CONVEX_SELF_HOSTED_ADMIN_KEY`
+   empty for now.
+2. Bring up Postgres + Convex backend + dashboard:
+   ```sh
+   docker compose up -d
+   ```
+3. Grab the admin key and paste it into `.env`:
+   ```sh
+   docker compose exec convex-backend ./generate_admin_key.sh
+   ```
+4. Push the schema and functions to your local backend:
+   ```sh
+   pnpm -F @fedor/convex dev
+   ```
+   This regenerates `backend/convex/convex/_generated/` from your schema
+   and watches for changes. Keep it running alongside `pnpm dev`.
+
+### Endpoints
+
+| Service          | URL                       |
+|------------------|---------------------------|
+| Backend API      | `http://127.0.0.1:3210`   |
+| HTTP actions     | `http://127.0.0.1:3211`   |
+| Dashboard        | `http://127.0.0.1:6791`   |
+| Postgres         | `postgres://fedor:fedor@127.0.0.1:5432/fedor` |
+
+### Adding a function
+
+1. Edit/create a module under `backend/convex/convex/` (e.g.
+   `posts.ts`).
+2. Export `query`/`mutation`/`action` from `./_generated/server`.
+3. `pnpm -F @fedor/convex dev` (or codegen) regenerates the typed
+   `api` re-export — consumers get autocomplete immediately.
+
+### `_generated/` files
+
+Committed to git so the workspace type-checks before anyone runs
+`convex dev`. They are overwritten on every codegen, so don't hand-edit.
 
 ## Adding a new workspace package
 

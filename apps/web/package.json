@@ -14,9 +14,11 @@
   },
   "prettier": "@fedor/prettier-config",
   "dependencies": {
+    "@fedor/convex": "workspace:*",
     "@fedor/ui": "workspace:*",
     "@fedor/validators": "workspace:*",
     "@t3-oss/env-nextjs": "^0.13.8",
+    "convex": "catalog:",
     "next": "^16.0.9",
     "react": "catalog:react19",
     "react-dom": "catalog:react19",
