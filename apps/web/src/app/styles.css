@@ -3,6 +3,7 @@
 @import '@fedor/tailwind-config/theme';
 
 @source '../../../../packages/ui/src/*.tsx';
+@source '../../../../packages/components/src/**/*.tsx';
 
 @custom-variant dark (&:where(.dark, .dark *));
 @custom-variant light (&:where(.light, .light *));

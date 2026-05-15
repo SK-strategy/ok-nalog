@@ -1,0 +1,5 @@
+# Convex codegen output — owned by `convex dev` / `convex codegen`. It
+# uses its own formatting (double quotes, semicolons, JSDoc banner) and
+# regenerates on every schema/function change. Letting Prettier fight it
+# would create an unfixable churn loop.
+convex/_generated/

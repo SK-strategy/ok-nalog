@@ -10,7 +10,7 @@
     "codegen": "pnpm with-env convex codegen",
     "deploy": "pnpm with-env convex deploy",
     "dev": "pnpm with-env convex dev --typecheck=disable",
-    "format": "prettier --check . --ignore-path ../../.gitignore",
+    "format": "prettier --check . --ignore-path ../../.gitignore --ignore-path .prettierignore",
     "lint": "eslint --flag unstable_native_nodejs_ts_config",
     "typecheck": "tsc --noEmit",
     "with-env": "dotenv -e ../../.env --"

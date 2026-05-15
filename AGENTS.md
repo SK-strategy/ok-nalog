@@ -14,7 +14,8 @@ apps/
 backend/
   convex/            # @fedor/convex — Convex backend (schema + functions)
 packages/
-  ui/                # @fedor/ui — shadcn-based component library
+  components/        # @fedor/components — branded compositions on top of @fedor/ui (event-calendar, …)
+  ui/                # @fedor/ui — shadcn-based primitives
   validators/        # Shared Zod schemas
 tooling/
   eslint/            # @fedor/eslint-config (flat config)
@@ -195,6 +196,44 @@ app consumes the generated `api` via `import { api } from '@fedor/convex'`.
 
 Committed to git so the workspace type-checks before anyone runs
 `convex dev`. They are overwritten on every codegen, so don't hand-edit.
+
+## Component structure (in `@fedor/components`)
+
+`@fedor/components` is for **composed, multi-part components** — each lives
+in its own directory under `src/`, with sub-components, hooks, types, and
+constants colocated. Pattern (see `src/event-calendar/` as the reference):
+
+```
+src/<component-name>/
+├── <component-name>/          # the root piece (e.g. calendar/)
+│   ├── <component-name>.tsx   # component implementation
+│   └── index.ts               # re-export {Component, Props, Context, …}
+├── <sub-part>/                # repeat for each sub-component
+│   ├── <sub-part>.tsx
+│   └── index.ts
+├── hooks/                     # hooks that drive the component family
+│   └── use-*.ts
+├── types.ts                   # shared types across sub-components
+├── constants.ts               # tunables (spacing, defaults, …)
+└── index.ts                   # public API barrel (the only file consumers import)
+```
+
+Rules:
+
+- **One barrel per slice.** Consumers import from `@fedor/components/<name>`
+  or `@fedor/components`. Never reach into a sub-directory.
+- **Sub-components are siblings, not children of the root file.** This
+  keeps each piece reviewable in isolation and lets `useContext` flow
+  through the root.
+- **Hooks belong inside the slice** when they're tied to its lifecycle
+  (e.g. `useCalendarGrid`). Genuinely cross-cutting hooks belong in
+  `apps/web/src/shared/lib/` instead.
+- **`'use client'` lives at the leaf** — files that call React hooks.
+  RSC-safe sub-components can omit it.
+
+For one-off / single-file components (a `Badge`, a `Spinner`) the flat
+shape `src/<name>.tsx` + a barrel entry is fine — escalate to the folder
+pattern as soon as a second file appears.
 
 ## Adding a new workspace package
 

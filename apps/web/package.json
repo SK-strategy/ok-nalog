@@ -14,6 +14,7 @@
   },
   "prettier": "@fedor/prettier-config",
   "dependencies": {
+    "@fedor/components": "workspace:*",
     "@fedor/convex": "workspace:*",
     "@fedor/ui": "workspace:*",
     "@fedor/validators": "workspace:*",
