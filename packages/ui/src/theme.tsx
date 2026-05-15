@@ -1,129 +1,121 @@
-"use client";
+'use client'
 
-import * as React from "react";
-import { DesktopIcon, MoonIcon, SunIcon } from "@radix-ui/react-icons";
-import * as z from "zod/v4";
+import * as React from 'react'
+import { DesktopIcon, MoonIcon, SunIcon } from '@radix-ui/react-icons'
+import * as z from 'zod/v4'
 
-import { Button } from "./button";
+import { Button } from './button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "./dropdown-menu";
+} from './dropdown-menu'
 
-const ThemeModeSchema = z.enum(["light", "dark", "auto"]);
+const ThemeModeSchema = z.enum(['light', 'dark', 'auto'])
 
-const themeKey = "theme-mode";
+const themeKey = 'theme-mode'
 
-export type ThemeMode = z.output<typeof ThemeModeSchema>;
-export type ResolvedTheme = Exclude<ThemeMode, "auto">;
+export type ThemeMode = z.output<typeof ThemeModeSchema>
+export type ResolvedTheme = Exclude<ThemeMode, 'auto'>
 
 const getStoredThemeMode = (): ThemeMode => {
-  if (typeof window === "undefined") return "auto";
+  if (typeof window === 'undefined') return 'auto'
   try {
-    const storedTheme = localStorage.getItem(themeKey);
-    return ThemeModeSchema.parse(storedTheme);
+    const storedTheme = localStorage.getItem(themeKey)
+
+    return ThemeModeSchema.parse(storedTheme)
   } catch {
-    return "auto";
+    return 'auto'
   }
-};
+}
 
 const setStoredThemeMode = (theme: ThemeMode) => {
   try {
-    const parsedTheme = ThemeModeSchema.parse(theme);
-    localStorage.setItem(themeKey, parsedTheme);
+    const parsedTheme = ThemeModeSchema.parse(theme)
+    localStorage.setItem(themeKey, parsedTheme)
   } catch {
     // Silently fail if localStorage is unavailable
   }
-};
+}
 
 const getSystemTheme = () => {
-  if (typeof window === "undefined") return "light";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-};
+  if (typeof window === 'undefined') return 'light'
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
 
 const updateThemeClass = (themeMode: ThemeMode) => {
-  const root = document.documentElement;
-  root.classList.remove("light", "dark", "auto");
-  const newTheme = themeMode === "auto" ? getSystemTheme() : themeMode;
-  root.classList.add(newTheme);
+  const root = document.documentElement
+  root.classList.remove('light', 'dark', 'auto')
+  const newTheme = themeMode === 'auto' ? getSystemTheme() : themeMode
+  root.classList.add(newTheme)
 
-  if (themeMode === "auto") {
-    root.classList.add("auto");
+  if (themeMode === 'auto') {
+    root.classList.add('auto')
   }
-};
+}
 
 const setupPreferredListener = () => {
-  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-  const handler = () => updateThemeClass("auto");
-  mediaQuery.addEventListener("change", handler);
-  return () => mediaQuery.removeEventListener("change", handler);
-};
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  const handler = () => updateThemeClass('auto')
+  mediaQuery.addEventListener('change', handler)
+  return () => mediaQuery.removeEventListener('change', handler)
+}
 
 const getNextTheme = (current: ThemeMode): ThemeMode => {
   const themes: ThemeMode[] =
-    getSystemTheme() === "dark"
-      ? ["auto", "light", "dark"]
-      : ["auto", "dark", "light"];
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  return themes[(themes.indexOf(current) + 1) % themes.length]!;
-};
+    getSystemTheme() === 'dark' ? ['auto', 'light', 'dark'] : ['auto', 'dark', 'light']
+
+  return themes[(themes.indexOf(current) + 1) % themes.length]!
+}
 
 export const themeDetectorScript = (function () {
   function themeFn() {
     const isValidTheme = (theme: string): theme is ThemeMode => {
-      const validThemes = ["light", "dark", "auto"] as const;
-      return validThemes.includes(theme as ThemeMode);
-    };
+      const validThemes = ['light', 'dark', 'auto'] as const
+      return validThemes.includes(theme as ThemeMode)
+    }
 
-    const storedTheme = localStorage.getItem("theme-mode") ?? "auto";
-    const validTheme = isValidTheme(storedTheme) ? storedTheme : "auto";
+    const storedTheme = localStorage.getItem('theme-mode') ?? 'auto'
+    const validTheme = isValidTheme(storedTheme) ? storedTheme : 'auto'
 
-    if (validTheme === "auto") {
-      const autoTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light";
-      document.documentElement.classList.add(autoTheme, "auto");
+    if (validTheme === 'auto') {
+      const autoTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      document.documentElement.classList.add(autoTheme, 'auto')
     } else {
-      document.documentElement.classList.add(validTheme);
+      document.documentElement.classList.add(validTheme)
     }
   }
-  return `(${themeFn.toString()})();`;
-})();
+  return `(${themeFn.toString()})();`
+})()
 
 interface ThemeContextProps {
-  themeMode: ThemeMode;
-  resolvedTheme: ResolvedTheme;
-  setTheme: (theme: ThemeMode) => void;
-  toggleMode: () => void;
+  themeMode: ThemeMode
+  resolvedTheme: ResolvedTheme
+  setTheme: (theme: ThemeMode) => void
+  toggleMode: () => void
 }
-const ThemeContext = React.createContext<ThemeContextProps | undefined>(
-  undefined,
-);
+const ThemeContext = React.createContext<ThemeContextProps | undefined>(undefined)
 
 export function ThemeProvider({ children }: React.PropsWithChildren) {
-  const [themeMode, setThemeMode] = React.useState(getStoredThemeMode);
+  const [themeMode, setThemeMode] = React.useState(getStoredThemeMode)
 
   React.useEffect(() => {
-    if (themeMode !== "auto") return;
-    return setupPreferredListener();
-  }, [themeMode]);
+    if (themeMode !== 'auto') return
+    return setupPreferredListener()
+  }, [themeMode])
 
-  const resolvedTheme = themeMode === "auto" ? getSystemTheme() : themeMode;
+  const resolvedTheme = themeMode === 'auto' ? getSystemTheme() : themeMode
 
   const setTheme = (newTheme: ThemeMode) => {
-    setThemeMode(newTheme);
-    setStoredThemeMode(newTheme);
-    updateThemeClass(newTheme);
-  };
+    setThemeMode(newTheme)
+    setStoredThemeMode(newTheme)
+    updateThemeClass(newTheme)
+  }
 
   const toggleMode = () => {
-    setTheme(getNextTheme(themeMode));
-  };
+    setTheme(getNextTheme(themeMode))
+  }
 
   return (
     <ThemeContext
@@ -134,25 +126,22 @@ export function ThemeProvider({ children }: React.PropsWithChildren) {
         toggleMode,
       }}
     >
-      <script
-        dangerouslySetInnerHTML={{ __html: themeDetectorScript }}
-        suppressHydrationWarning
-      />
+      <script dangerouslySetInnerHTML={{ __html: themeDetectorScript }} suppressHydrationWarning />
       {children}
     </ThemeContext>
-  );
+  )
 }
 
 export function useTheme() {
-  const context = React.use(ThemeContext);
+  const context = React.use(ThemeContext)
   if (!context) {
-    throw new Error("useTheme must be used within a ThemeProvider");
+    throw new Error('useTheme must be used within a ThemeProvider')
   }
-  return context;
+  return context
 }
 
 export function ThemeToggle() {
-  const { setTheme } = useTheme();
+  const { setTheme } = useTheme()
 
   return (
     <DropdownMenu>
@@ -169,16 +158,10 @@ export function ThemeToggle() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme("light")}>
-          Light
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("dark")}>
-          Dark
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("auto")}>
-          System
-        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setTheme('light')}>Light</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setTheme('dark')}>Dark</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setTheme('auto')}>System</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  );
+  )
 }

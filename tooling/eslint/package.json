@@ -1,5 +1,5 @@
 {
-  "name": "@acme/eslint-config",
+  "name": "@fedor/eslint-config",
   "private": true,
   "type": "module",
   "exports": {
@@ -12,24 +12,26 @@
     "format": "prettier --check . --ignore-path ../../.gitignore",
     "typecheck": "tsc --noEmit"
   },
+  "prettier": "@fedor/prettier-config",
   "dependencies": {
     "@eslint/compat": "^1.4.0",
     "@eslint/js": "catalog:",
     "@next/eslint-plugin-next": "^16.0.0",
+    "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-prettier": "^5.5.4",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-turbo": "^2.5.8",
     "typescript-eslint": "^8.46.2"
   },
   "devDependencies": {
-    "@acme/prettier-config": "workspace:*",
-    "@acme/tsconfig": "workspace:*",
+    "@fedor/prettier-config": "workspace:*",
+    "@fedor/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "eslint": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:"
-  },
-  "prettier": "@acme/prettier-config"
+  }
 }

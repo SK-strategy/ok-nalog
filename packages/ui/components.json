@@ -10,8 +10,12 @@
     "cssVariables": true
   },
   "aliases": {
-    "utils": "@acme/ui",
+    "utils": "@fedor/ui",
     "components": "src/",
     "ui": "src/"
+  },
+  "registries": {
+    "@form-builder": "https://www.shadcn-form.com/registry/{name}.json",
+    "@coss/ui": "https://coss.com/origin/r/{name}.json"
   }
 }

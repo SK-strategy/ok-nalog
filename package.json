@@ -1,5 +1,5 @@
 {
-  "name": "create-t3-turbo",
+  "name": "fedor",
   "private": true,
   "engines": {
     "node": "^22.21.0",
@@ -8,31 +8,30 @@
   "packageManager": "pnpm@10.19.0",
   "scripts": {
     "build": "turbo run build",
+    "check": "pnpm lint && pnpm lint:fsd && pnpm format && pnpm typecheck",
     "clean": "git clean -xdf node_modules",
     "clean:workspaces": "turbo run clean",
-    "auth:generate": "pnpm -F @acme/auth generate",
-    "db:push": "turbo -F @acme/db push",
-    "db:studio": "turbo -F @acme/db studio",
     "dev": "turbo watch dev --continue",
-    "dev:next": "turbo watch dev -F @acme/nextjs...",
+    "dev:web": "turbo watch dev -F @fedor/web...",
     "format": "turbo run format --continue -- --cache --cache-location .cache/.prettiercache",
     "format:fix": "turbo run format --continue -- --write --cache --cache-location .cache/.prettiercache",
     "lint": "turbo run lint --continue -- --cache --cache-location .cache/.eslintcache",
     "lint:fix": "turbo run lint --continue -- --fix --cache --cache-location .cache/.eslintcache",
+    "lint:fsd": "steiger ./apps/web/src",
     "lint:ws": "pnpm dlx sherif@latest",
     "postinstall": "pnpm lint:ws",
     "typecheck": "turbo run typecheck",
-    "ui-add": "turbo run ui-add",
-    "android": "expo run:android",
-    "ios": "expo run:ios"
+    "ui-add": "turbo run ui-add"
   },
+  "prettier": "@fedor/prettier-config",
   "devDependencies": {
-    "@acme/prettier-config": "workspace:*",
+    "@feature-sliced/steiger-plugin": "^0.5.4",
+    "@fedor/prettier-config": "workspace:*",
     "@turbo/gen": "^2.5.8",
     "dotenv-cli": "^10.0.0",
     "prettier": "catalog:",
+    "steiger": "^0.5.6",
     "turbo": "^2.5.8",
     "typescript": "catalog:"
-  },
-  "prettier": "@acme/prettier-config"
+  }
 }
