@@ -42,3 +42,16 @@ export type MessageSenderRole = (typeof MESSAGE_SENDER_ROLES)[number]
 export const TRANSACTION_TYPES = ['accrual', 'payout'] as const
 export const transactionTypeSchema = z.enum(TRANSACTION_TYPES)
 export type TransactionType = (typeof TRANSACTION_TYPES)[number]
+
+// Client classification — used to filter categories/tags on the customer
+// home so the catalogue is relevant to who is asking (юр.лицо/ИП, физлицо,
+// плательщик НПД). Mirrored in `categories.clientTypes` and `tags.clientTypes`.
+export const CLIENT_TYPES = ['legal_entity_ie', 'individual', 'npd_payer'] as const
+export const clientTypeSchema = z.enum(CLIENT_TYPES)
+export type ClientType = (typeof CLIENT_TYPES)[number]
+
+export const CLIENT_TYPE_LABEL: Record<ClientType, { full: string; short: string }> = {
+  legal_entity_ie: { full: 'Юридическое лицо / ИП', short: 'ЮЛ / ИП' },
+  individual: { full: 'Физическое лицо', short: 'ФЛ' },
+  npd_payer: { full: 'Плательщик НПД', short: 'НПД' },
+}

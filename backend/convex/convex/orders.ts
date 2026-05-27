@@ -25,17 +25,29 @@ export const create = mutation({
     categoryId: v.id('categories'),
     description: v.string(),
     attachmentIds: v.array(v.id('_storage')),
+    tagId: v.optional(v.id('tags')),
+    clientType: v.optional(
+      v.union(v.literal('legal_entity_ie'), v.literal('individual'), v.literal('npd_payer')),
+    ),
   },
-  handler: async (ctx, { categoryId, description, attachmentIds }) => {
+  handler: async (ctx, { categoryId, description, attachmentIds, tagId, clientType }) => {
     const user = await requireUser(ctx)
     const category = await ctx.db.get(categoryId)
     if (!category?.isActive) {
       throw new ConvexError({ code: 'BAD_CATEGORY', message: 'Категория недоступна' })
     }
+    if (tagId) {
+      const tag = await ctx.db.get(tagId)
+      if (!tag?.isActive || tag.categoryId !== categoryId) {
+        throw new ConvexError({ code: 'BAD_TAG', message: 'Тег недоступен' })
+      }
+    }
     const now = Date.now()
     const orderId = await ctx.db.insert('orders', {
       customerId: user._id,
       categoryId,
+      tagId,
+      clientType,
       description,
       attachmentIds,
       status: 'submitted',
@@ -43,6 +55,12 @@ export const create = mutation({
       createdAt: now,
       submittedAt: now,
     })
+    // Clear the customer's draft now that it's been submitted.
+    const draft = await ctx.db
+      .query('orderDrafts')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .unique()
+    if (draft) await ctx.db.delete(draft._id)
     await postSystem(ctx, orderId, 'Заявка отправлена на проверку администратору')
     return orderId
   },
@@ -66,7 +84,8 @@ export const get = query({
   handler: async (ctx, { orderId }) => {
     const { order, role } = await loadParticipant(ctx, orderId)
     const category = await ctx.db.get(order.categoryId)
-    return { order: anonymize(order, role), category, role }
+    const tag = order.tagId ? await ctx.db.get(order.tagId) : null
+    return { order: anonymize(order, role), category, tag, role }
   },
 })
 

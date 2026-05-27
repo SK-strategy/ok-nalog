@@ -3,7 +3,8 @@ import { v } from 'convex/values'
 
 // Source of truth for the persisted shape. The same string-literal sets are
 // mirrored as Zod enums in `@tax-assistant/validators` for app/UI use — keep them in
-// sync (ROLES, ORDER_STATUSES, EXECUTOR_STATUSES, …). Money is integer kopecks.
+// sync (ROLES, ORDER_STATUSES, EXECUTOR_STATUSES, CLIENT_TYPES, …). Money is
+// integer kopecks.
 //
 // Identity:
 //   - The better-auth Convex component owns the authentication tables
@@ -11,10 +12,15 @@ import { v } from 'convex/values'
 //   - The domain `users` table below is a mirror, kept in sync via the
 //     `triggers` wiring in `auth.ts`. Every authenticated user has exactly
 //     one row here. Domain tables reference it via `Id<'users'>`.
+
+const clientType = v.union(
+  v.literal('legal_entity_ie'),
+  v.literal('individual'),
+  v.literal('npd_payer'),
+)
+
 export default defineSchema({
   // ── Domain users (mirror of the better-auth identity + Telegram profile) ──
-  // Created automatically on first sign-in by the user-create trigger in
-  // `auth.ts`. `authUserId` joins back to the better-auth `user._id`.
   users: defineTable({
     authUserId: v.string(),
     telegramId: v.string(),
@@ -28,17 +34,57 @@ export default defineSchema({
     .index('by_auth_user', ['authUserId'])
     .index('by_telegram', ['telegramId']),
 
-  // ── Catalogue (admin-managed) ─────────────────────────────────────────────
+  // ── Catalogue (admin-managed, seedable) ───────────────────────────────────
+  // Top-level thematic groupings ("Налоговые проверки", "Основные налоги" …).
+  // `code` is the stable seed key used for idempotent upserts.
+  // `clientTypes` is the union of client types the category is relevant to —
+  // home filters categories by the currently selected client type.
   categories: defineTable({
+    code: v.optional(v.string()),
     title: v.string(),
     description: v.string(),
     basePrice: v.number(), // примерная стоимость, kopecks
     isActive: v.boolean(),
     sortOrder: v.number(),
-    createdBy: v.id('users'),
+    clientTypes: v.optional(v.array(clientType)),
+    createdBy: v.optional(v.id('users')),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index('by_active_order', ['isActive', 'sortOrder']),
+  })
+    .index('by_active_order', ['isActive', 'sortOrder'])
+    .index('by_code', ['code']),
+
+  // ── Tags (specific topics inside a category) ──────────────────────────────
+  // The customer picks a tag in the new-question form so the admin/executor
+  // get a precise topic and matching `specialistCode` for routing.
+  tags: defineTable({
+    code: v.string(),
+    name: v.string(),
+    specialistCode: v.optional(v.string()),
+    categoryId: v.id('categories'),
+    clientTypes: v.array(clientType),
+    sortOrder: v.number(),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_code', ['code'])
+    .index('by_category', ['categoryId'])
+    .index('by_active_category', ['isActive', 'categoryId']),
+
+  // ── Per-user order draft ──────────────────────────────────────────────────
+  // One row per user; the new-question form auto-saves into it so the customer
+  // can close the TMA mid-question and resume on the next open. Cleared on
+  // successful `orders.create`.
+  orderDrafts: defineTable({
+    userId: v.id('users'),
+    categoryId: v.optional(v.id('categories')),
+    tagId: v.optional(v.id('tags')),
+    clientType: v.optional(clientType),
+    description: v.string(),
+    attachmentIds: v.array(v.id('_storage')),
+    updatedAt: v.number(),
+  }).index('by_user', ['userId']),
 
   // ── Executors (анкета + balance) ──────────────────────────────────────────
   executorProfiles: defineTable({
@@ -59,9 +105,13 @@ export default defineSchema({
     .index('by_status', ['status']),
 
   // ── Orders (the order lifecycle) ──────────────────────────────────────────
+  // `tagId` and `clientType` are snapshots captured at creation so the order
+  // record stays meaningful even if the catalogue is later edited.
   orders: defineTable({
     customerId: v.id('users'),
     categoryId: v.id('categories'),
+    tagId: v.optional(v.id('tags')),
+    clientType: v.optional(clientType),
     description: v.string(),
     attachmentIds: v.array(v.id('_storage')),
     status: v.union(
@@ -97,7 +147,6 @@ export default defineSchema({
     .index('by_category', ['categoryId']),
 
   // ── Anonymized per-order chat ─────────────────────────────────────────────
-  // UI renders senderRole only — never the real identity. Admin can read all.
   messages: defineTable({
     orderId: v.id('orders'),
     senderRole: v.union(v.literal('customer'), v.literal('executor'), v.literal('system')),
@@ -125,8 +174,6 @@ export default defineSchema({
     .index('by_order', ['orderId'])
     .index('by_provider_payment', ['providerPaymentId']),
 
-  // Executor balance ledger: accrual = +70% of approvedPrice on completion,
-  // payout = negative entry written when admin zeroes the balance.
   transactions: defineTable({
     executorProfileId: v.id('executorProfiles'),
     orderId: v.optional(v.id('orders')),

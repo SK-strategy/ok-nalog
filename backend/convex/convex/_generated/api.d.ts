@@ -11,6 +11,7 @@
 import type * as auth from "../auth.js";
 import type * as categories from "../categories.js";
 import type * as crons from "../crons.js";
+import type * as drafts from "../drafts.js";
 import type * as executors from "../executors.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
@@ -20,6 +21,9 @@ import type * as lib_ledger from "../lib/ledger.js";
 import type * as lib_orders from "../lib/orders.js";
 import type * as messages from "../messages.js";
 import type * as orders from "../orders.js";
+import type * as seed from "../seed.js";
+import type * as seedData from "../seedData.js";
+import type * as tags from "../tags.js";
 import type * as users from "../users.js";
 
 import type {
@@ -32,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   categories: typeof categories;
   crons: typeof crons;
+  drafts: typeof drafts;
   executors: typeof executors;
   files: typeof files;
   http: typeof http;
@@ -41,6 +46,9 @@ declare const fullApi: ApiFromModules<{
   "lib/orders": typeof lib_orders;
   messages: typeof messages;
   orders: typeof orders;
+  seed: typeof seed;
+  seedData: typeof seedData;
+  tags: typeof tags;
   users: typeof users;
 }>;
 

@@ -4,20 +4,9 @@ import { useEffect, useRef, useState } from 'react'
 
 import { Skeleton } from '@tax-assistant/ui'
 
+import { getTelegramApp } from '~/widgets/tma-shell'
 import { useSession } from '~/entities/session'
 import { authClient } from '~/shared/lib/auth-client'
-
-interface TelegramWebApp {
-  initData: string
-  ready: () => void
-  expand: () => void
-}
-
-declare global {
-  interface Window {
-    Telegram?: { WebApp?: TelegramWebApp }
-  }
-}
 
 /**
  * Silent auth for the Mini App: read `initData` from the Telegram WebView and
@@ -38,14 +27,12 @@ export function TmaAuthGate({ children }: { children: React.ReactNode }) {
   const [signingIn, setSigningIn] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  console.log({me, isAuthenticated, attempted})
-
   useEffect(() => {
     if (attempted.current || isAuthenticated) return
     attempted.current = true
     setSigningIn(true)
     void (async () => {
-      const wa = window.Telegram?.WebApp
+      const wa = getTelegramApp()
       wa?.ready()
       wa?.expand()
       const initData = wa?.initData

@@ -1,3 +1,3 @@
-import { TmaAppPage } from '~/views/tma-app'
+import { HomePage } from '~/views/home'
 
-export default TmaAppPage
+export default HomePage
