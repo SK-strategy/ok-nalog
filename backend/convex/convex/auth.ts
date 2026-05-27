@@ -204,16 +204,40 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>): BetterAuthOptions
                 enabled: true,
                 clientSecret: oidcClientSecret,
                 requestPhone: false,
-                // Stamp telegramId onto the user row better-auth creates for
-                // OIDC. Without this, a later Login Widget / Mini App sign-in
-                // can't find the OIDC-created user by `users.telegramId` and
-                // would create a duplicate row. Also normalises the email so
-                // accountLinking can match a pre-existing widget user.
-                mapOIDCProfileToUser: (claims) => ({
-                  email: `${claims.sub}@telegram.local`,
-                  emailVerified: false,
-                  telegramId: claims.sub,
-                }),
+                // Telegram OIDC ships two id-like claims in the id_token:
+                //   - `sub`: a 20-digit pseudonymous per-(bot, user) subject
+                //     identifier (e.g. "17505335518239559980"). Stable, but
+                //     bears no relation to any other Telegram surface.
+                //   - `id`:  the real numeric Telegram user id (e.g.
+                //     "246007355"), the same value Login Widget / Mini App /
+                //     bot API return. Not in the plugin's `TelegramOIDCClaims`
+                //     TS type, but Telegram does send it.
+                //
+                // We map `id`, `email`, and `telegramId` all off `claims.id`.
+                // The `id` override matters because the plugin's getUserInfo
+                // uses it as `account.accountId`, which is what better-auth
+                // looks up on every subsequent OIDC sign-in. Keying that on
+                // the real Telegram id (rather than the pseudonymous `sub`)
+                // is what makes all three flows resolve to one user:
+                //   - account lookup `(telegram-oidc, 246007355)` matches any
+                //     prior OIDC sign-in by the same person
+                //   - if no OIDC account row exists yet, accountLinking
+                //     attaches it to the user already pinned by the
+                //     `${telegramId}@telegram.local` email or by the trigger's
+                //     telegramId-based domain re-link
+                // Without overriding `id`, the plugin would default to
+                // `account.accountId = claims.sub`, which never matches
+                // anything the Login Widget / Mini App flows produced.
+                mapOIDCProfileToUser: (claims) => {
+                  const c = claims as unknown as { id?: unknown; sub?: unknown }
+                  const telegramId = String(c.id ?? c.sub ?? '')
+                  return {
+                    id: telegramId,
+                    email: `${telegramId}@telegram.local`,
+                    emailVerified: false,
+                    telegramId,
+                  }
+                },
               },
             }
           : {}),
