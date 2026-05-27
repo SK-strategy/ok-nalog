@@ -303,20 +303,16 @@ export const assignedToMe = query({
 })
 
 /**
- * Every still-claimable order matching the caller's categoryIds — the
- * executor's "выберите заявку" pool. "Claimable" means any pre-completion,
- * not-yet-assigned status: `submitted`, `priced`, `awaiting_payment`,
- * `payment_expired`, `paid`. The admin pricing / payment path still works,
- * but it's no longer a precondition — a freshly submitted order is
- * immediately visible to a qualified expert.
- *
- * Ordered oldest-first so the queue is fair: the order that waited the
- * longest is the easiest to take. The caller's own orders are excluded —
- * a person can't pick up their own заявка, and surfacing it would let them
- * see both sides of the anonymised chat.
+ * The executor's "выберите заявку" pool: every paid, still-unassigned order
+ * whose category appears in the caller's анкета. Orders only enter the pool
+ * after the customer has paid — pre-payment lives on the customer ↔ admin
+ * side. Ordered oldest-first so the longest-waiting заявка is the easiest
+ * to take. The caller's own orders are excluded — a person can't pick up
+ * their own заявка, and surfacing it would expose both sides of the
+ * anonymised chat.
  *
  * Returns an empty list when the caller isn't an approved executor (rather
- * than throwing — the cabinet shell already gates the route, this query is
+ * than throwing — the cabinet shell already gates the route; this query is
  * meant to be safe to skip).
  */
 export const availableForExecutor = query({
@@ -328,21 +324,51 @@ export const availableForExecutor = query({
       .query('executorProfiles')
       .withIndex('by_user', (q) => q.eq('userId', user._id))
       .unique()
-    if (!profile || profile.status !== 'approved') return []
+    if (!profile || profile.status !== 'approved' || profile.categoryIds.length === 0) return []
 
-    const buckets = await Promise.all(
-      CLAIMABLE_STATUSES.map((status) =>
-        ctx.db
-          .query('orders')
-          .withIndex('by_status', (q) => q.eq('status', status))
-          .collect(),
-      ),
-    )
-    const all = buckets.flat()
-    return all
-      .filter((o) => o.customerId !== user._id && profile.categoryIds.includes(o.categoryId))
-      .sort((a, b) => a.createdAt - b.createdAt)
+    // `paid` orders are unassigned by definition — the state machine moves
+    // an order off `paid` the instant an executor takes it.
+    const categories = new Set(profile.categoryIds)
+    const paid = await ctx.db
+      .query('orders')
+      .withIndex('by_status', (q) => q.eq('status', 'paid'))
+      .collect()
+    return paid
+      .filter((o) => o.customerId !== user._id && categories.has(o.categoryId))
+      .sort((a, b) => (a.paidAt ?? a.createdAt) - (b.paidAt ?? b.createdAt))
       .map((o) => anonymize(o, 'executor'))
+  },
+})
+
+/**
+ * Single-order preview for an approved executor browsing the available
+ * pool. Returns the same anonymised order shape as `availableForExecutor`,
+ * plus its category + tag for rich detail rendering. Returns `null` when
+ * the order is no longer claimable by this caller (it's been taken,
+ * cancelled, isn't in the caller's тематики, or is their own заявка) —
+ * the cabinet's preview sheet subscribes to this query and flips to an
+ * "уже взяли" message the moment the result goes null.
+ */
+export const availablePreview = query({
+  args: { orderId: v.id('orders') },
+  handler: async (ctx, { orderId }) => {
+    const user = await getUser(ctx)
+    if (!user) return null
+    const profile = await ctx.db
+      .query('executorProfiles')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .unique()
+    if (!profile || profile.status !== 'approved') return null
+
+    const order = await ctx.db.get(orderId)
+    if (!order) return null
+    if (!CLAIMABLE_STATUSES.includes(order.status)) return null
+    if (order.customerId === user._id) return null
+    if (!profile.categoryIds.includes(order.categoryId)) return null
+
+    const category = await ctx.db.get(order.categoryId)
+    const tag = order.tagId ? await ctx.db.get(order.tagId) : null
+    return { order: anonymize(order, 'executor'), category, tag }
   },
 })
 
@@ -391,22 +417,10 @@ export const claim = mutation({
       })
     }
 
-    // If admin hadn't already locked in a custom price, lock the category's
-    // base price now — `complete` accrual reads `approvedPrice`, so it must
-    // be set by the time work starts.
-    const patch: {
-      assignedExecutorId: typeof user._id
-      assignedAt: number
-      approvedPrice?: number
-    } = {
+    await transition(ctx, order, 'assigned', {
       assignedExecutorId: user._id,
       assignedAt: Date.now(),
-    }
-    if (order.approvedPrice === undefined) {
-      patch.approvedPrice = order.quotedPrice
-    }
-
-    await transition(ctx, order, 'assigned', patch)
+    })
     await postSystem(ctx, orderId, 'Эксперт взял заявку в работу')
   },
 })

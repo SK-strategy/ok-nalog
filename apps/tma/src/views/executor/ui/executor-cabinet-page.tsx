@@ -3,45 +3,222 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from 'convex/react'
-import { Briefcase, Inbox, Pencil, Sparkles, Tags } from 'lucide-react'
+import {
+  Clock,
+  Inbox,
+  MessageSquareLock,
+  Pencil,
+  ShieldCheck,
+  Sparkles,
+  Tags,
+  Wallet,
+  XCircle,
+} from 'lucide-react'
 
 import type { OrderStatus } from '@tax-assistant/validators'
 import { formatKopecks, isTerminal } from '@tax-assistant/validators'
 
+import type { HomeMode } from '~/widgets/mode-switcher'
+import { ModeSwitcher } from '~/widgets/mode-switcher'
 import { TmaScreen } from '~/widgets/tma-shell'
-import { AvailableOrderRow } from '~/features/claim-order'
-import { ProfileEditSheet } from '~/features/executor-application'
+import type { ExecutorApplicationInitial } from '~/features/executor-application'
+import { AvailableOrderRow, AvailableOrderSheet } from '~/features/claim-order'
+import {
+  ExecutorApplicationForm,
+  ProfileEditSheet,
+  useExecutorApplication,
+} from '~/features/executor-application'
 import { OrderRow, OrdersList } from '~/entities/order'
 import { useSession } from '~/entities/session'
 import type { Doc, Id } from '~/shared/api'
 import { api } from '~/shared/api'
 
 type Order = Omit<Doc<'orders'>, 'customerId' | 'assignedExecutorId'>
+type Profile = Doc<'executorProfiles'>
 
 const EXECUTOR_ACTIVE_STATUSES = new Set<OrderStatus>(['assigned', 'in_progress', 'answered'])
 
 /**
- * /executor — executor cabinet.
+ * /executor — executor cabinet, dispatched by анкета status.
  *
- * The primary surface is the "Доступные заявки" pool: every paid, still
- * unassigned order that matches one of the executor's tematics. The expert
- * picks one inline; if they already have something in flight, claim buttons
- * are disabled until that order resolves. The rest of the cabinet (balance,
- * history, anketa) supports that decision.
- *
- * Non-approved users hit a soft gate explaining what they need to do.
+ *  - No profile yet → <ApplyScreen>: hero + inline application form,
+ *    submission goes to MainButton. Becoming an expert is the only thing
+ *    this route can do for them, so the whole screen is the onboarding.
+ *  - pending → <PendingScreen>: status hero + read-only анкета preview +
+ *    edit affordance. Admin must approve before anything else opens.
+ *  - rejected → <RejectedScreen>: rejection banner + revise form with the
+ *    previous answers pre-filled, MainButton resubmits.
+ *  - approved → <ApprovedCabinet>: the working surface — available pool,
+ *    in-flight, balance, history, анкета edit.
  */
 export function ExecutorCabinetPage() {
-  const router = useRouter()
-  const { me, isAuthenticated } = useSession()
-  const isApproved = me?.executor?.status === 'approved'
+  const { isAuthenticated, me, isLoading } = useSession()
+  const profile = useQuery(api.executors.myProfile, isAuthenticated ? {} : 'skip')
 
-  const orders = useQuery(api.orders.assignedToMe, isAuthenticated && isApproved ? {} : 'skip')
-  const available = useQuery(
-    api.orders.availableForExecutor,
-    isAuthenticated && isApproved ? {} : 'skip',
+  // Wait until we know the executor's status. `me === undefined` is the
+  // session bootstrap; once `me.executor !== null` the full profile query
+  // must also resolve before we can render apply/preview UI.
+  const sessionReady = !isLoading && me !== undefined
+  const profileReady = !me?.executor || profile !== undefined
+  if (!sessionReady || !profileReady) {
+    return <LoadingScreen />
+  }
+
+  const executor = me?.executor
+  if (!executor) return <ApplyScreen />
+  if (executor.status === 'pending') return <PendingScreen profile={profile?.profile} />
+  if (executor.status === 'rejected') return <RejectedScreen profile={profile?.profile} />
+  return (
+    <ApprovedCabinet
+      profile={profile?.profile}
+      balance={executor.balance}
+      lifetimeEarned={profile?.lifetimeEarned ?? 0}
+      completedCount={profile?.completedCount ?? 0}
+    />
   )
-  const profile = useQuery(api.executors.myProfile, isAuthenticated && isApproved ? {} : 'skip')
+}
+
+// ─── loading ─────────────────────────────────────────────────────────────
+function LoadingScreen() {
+  return (
+    <TmaScreen title="Кабинет эксперта">
+      <div className="flex flex-col gap-4 px-4 pt-6">
+        <div className="bg-secondary h-24 animate-pulse rounded-2xl" />
+        <div className="bg-secondary h-40 animate-pulse rounded-2xl" />
+      </div>
+    </TmaScreen>
+  )
+}
+
+// ─── apply (first-time) ──────────────────────────────────────────────────
+function ApplyScreen() {
+  const form = useExecutorApplication()
+  return (
+    <TmaScreen
+      title="Стать экспертом"
+      mainButton={{
+        text: form.submitting ? 'Отправляем…' : 'Отправить анкету',
+        onClick: () => void form.submit(),
+        disabled: !form.canSubmit,
+        loading: form.submitting,
+      }}
+    >
+      <div className="flex flex-col gap-5 px-4 pt-3 pb-6">
+        <Hero
+          icon={<Sparkles className="size-6" strokeWidth={1.8} />}
+          tone="primary"
+          title="Консультируйте и получайте вознаграждение"
+          body="Заполните короткую анкету — администратор проверит её и подключит вас к подходящим заявкам."
+        />
+        <Perks
+          items={[
+            {
+              icon: <Inbox className="size-[18px]" strokeWidth={1.8} />,
+              title: 'Заявки по вашим тематикам',
+              body: 'Видите заявки сразу после оплаты клиентом — берёте те, что подходят.',
+            },
+            {
+              icon: <MessageSquareLock className="size-[18px]" strokeWidth={1.8} />,
+              title: 'Анонимный чат',
+              body: 'Клиент не видит ваших контактов — общение только внутри заявки.',
+            },
+            {
+              icon: <Wallet className="size-[18px]" strokeWidth={1.8} />,
+              title: 'Прозрачные выплаты',
+              body: 'Баланс пополняется после подтверждения ответа клиентом.',
+            },
+          ]}
+        />
+        <ExecutorApplicationForm form={form} />
+        <TrustFooter text="После отправки анкета попадёт к администратору. Мы напишем сюда, как только её рассмотрят." />
+      </div>
+    </TmaScreen>
+  )
+}
+
+// ─── pending (awaiting review) ───────────────────────────────────────────
+function PendingScreen({ profile }: { profile: Profile | undefined }) {
+  const [editOpen, setEditOpen] = useState(false)
+  const initial = profile ? toInitial(profile) : undefined
+  return (
+    <TmaScreen title="Кабинет эксперта">
+      <div className="flex flex-col gap-5 px-4 pt-3 pb-6">
+        <Hero
+          icon={<Clock className="size-6" strokeWidth={1.8} />}
+          tone="pending"
+          title="Анкета на проверке"
+          body="Администратор просматривает вашу заявку. Обычно занимает до одного рабочего дня — мы напишем сюда, как только примем решение."
+        />
+        {profile && (
+          <SubmittedPreview
+            profile={profile}
+            onEdit={() => setEditOpen(true)}
+            editLabel="Изменить анкету"
+          />
+        )}
+      </div>
+      <ProfileEditSheet open={editOpen} initial={initial} onClose={() => setEditOpen(false)} />
+    </TmaScreen>
+  )
+}
+
+// ─── rejected (revise + resubmit) ────────────────────────────────────────
+function RejectedScreen({ profile }: { profile: Profile | undefined }) {
+  const initial = profile ? toInitial(profile) : undefined
+  const form = useExecutorApplication({ initial })
+  return (
+    <TmaScreen
+      title="Кабинет эксперта"
+      mainButton={{
+        text: form.submitting ? 'Отправляем…' : 'Отправить повторно',
+        onClick: () => void form.submit(),
+        disabled: !form.canSubmit,
+        loading: form.submitting,
+      }}
+    >
+      <div className="flex flex-col gap-5 px-4 pt-3 pb-6">
+        <Hero
+          icon={<XCircle className="size-6" strokeWidth={1.8} />}
+          tone="rejected"
+          title="Анкета не прошла проверку"
+          body="Поправьте указанное ниже и отправьте заново — мы рассмотрим повторно."
+        />
+        {profile?.rejectionReason && (
+          <div
+            className="border-destructive/30 bg-destructive/5 mx-1 rounded-2xl border px-4 py-3.5"
+          >
+            <div className="text-destructive text-[11px] font-bold tracking-[0.06em] uppercase">
+              Комментарий администратора
+            </div>
+            <p className="text-foreground mt-1 text-[13px] leading-relaxed whitespace-pre-wrap">
+              {profile.rejectionReason}
+            </p>
+          </div>
+        )}
+        <ExecutorApplicationForm form={form} />
+        <TrustFooter text="После повторной отправки анкета снова попадёт к администратору." />
+      </div>
+    </TmaScreen>
+  )
+}
+
+// ─── approved (working surface) ──────────────────────────────────────────
+function ApprovedCabinet({
+  profile,
+  balance,
+  lifetimeEarned,
+  completedCount,
+}: {
+  profile: Profile | undefined
+  balance: number
+  lifetimeEarned: number
+  completedCount: number
+}) {
+  const router = useRouter()
+  const { isAuthenticated, me } = useSession()
+
+  const orders = useQuery(api.orders.assignedToMe, isAuthenticated ? {} : 'skip')
+  const available = useQuery(api.orders.availableForExecutor, isAuthenticated ? {} : 'skip')
   const categories = useQuery(api.categories.listActive, isAuthenticated ? {} : 'skip')
 
   const categoryById = useMemo(
@@ -50,50 +227,21 @@ export function ExecutorCabinetPage() {
   )
   const { active, closed } = useMemo(() => splitAssigned(orders ?? []), [orders])
   const hasActive = active.length > 0
-  const hasNoCategories = profile !== undefined && profile?.profile.categoryIds.length === 0
+  const hasNoCategories = profile?.categoryIds.length === 0
 
   const [editOpen, setEditOpen] = useState(false)
+  const initial = profile ? toInitial(profile) : undefined
 
-  if (!isApproved) {
-    return (
-      <TmaScreen title="Кабинет эксперта">
-        <div className="flex flex-col items-center gap-3 px-6 pt-16 text-center">
-          <Briefcase className="text-hint size-10" strokeWidth={1.6} />
-          <p className="text-foreground text-base font-bold">Доступ только для экспертов</p>
-          <p className="text-text-soft text-sm">
-            Заполните анкету и дождитесь одобрения, чтобы видеть назначенные заявки.
-          </p>
-        </div>
-      </TmaScreen>
-    )
-  }
-
-  const balance = me.executor?.balance ?? 0
-  const profileInitial = profile
-    ? {
-        fullName: profile.profile.fullName,
-        bio: profile.profile.bio,
-        qualifications: profile.profile.qualifications,
-        categoryIds: [...profile.profile.categoryIds],
-      }
-    : undefined
-  const profileCategoryTitles = (profile?.profile.categoryIds ?? [])
-    .map((id) => categoryById.get(id)?.title)
-    .filter((t): t is string => !!t)
+  // Same allowed-modes logic as HomePage — approved executors always have
+  // customer + executor; admins-who-also-executors get all three. The
+  // switcher owns its own routing, so we just hand it the shape.
+  const allowed: HomeMode[] = ['customer', 'executor']
+  if (me?.user.role === 'admin') allowed.push('admin')
 
   return (
     <TmaScreen
       title="Кабинет эксперта"
-      rightAction={
-        <button
-          type="button"
-          onClick={() => setEditOpen(true)}
-          className="text-primary p-1 text-[13px] font-semibold"
-          aria-label="Редактировать анкету"
-        >
-          Анкета
-        </button>
-      }
+      rightAction={<ModeSwitcher current="executor" allowed={allowed} />}
     >
       <div className="flex flex-col gap-5 pt-3 pb-2">
         {/* PRIMARY: orders waiting for an executor — the reason this page
@@ -123,7 +271,11 @@ export function ExecutorCabinetPage() {
           </Section>
         )}
 
-        <BalanceCard balance={balance} />
+        <BalanceCard
+          balance={balance}
+          lifetimeEarned={lifetimeEarned}
+          completedCount={completedCount}
+        />
 
         {closed.length > 0 && (
           <Section title={`Завершённые · ${closed.length}`}>
@@ -142,26 +294,178 @@ export function ExecutorCabinetPage() {
         )}
 
         {profile && (
-          <ProfileCard
-            fullName={profile.profile.fullName}
-            bio={profile.profile.bio}
-            qualifications={profile.profile.qualifications}
-            categoryTitles={profileCategoryTitles}
+          <SubmittedPreview
+            profile={profile}
+            categoryById={categoryById}
             onEdit={() => setEditOpen(true)}
+            editLabel="Изменить"
+            headerLabel="Анкета"
           />
         )}
       </div>
 
-      <ProfileEditSheet
-        open={editOpen}
-        initial={profileInitial}
-        onClose={() => setEditOpen(false)}
-      />
+      <ProfileEditSheet open={editOpen} initial={initial} onClose={() => setEditOpen(false)} />
     </TmaScreen>
   )
 }
 
-// ─── available pool section ───────────────────────────────────────────────
+// ─── hero card ───────────────────────────────────────────────────────────
+function Hero({
+  icon,
+  tone,
+  title,
+  body,
+}: {
+  icon: React.ReactNode
+  tone: 'primary' | 'pending' | 'rejected'
+  title: string
+  body: string
+}) {
+  const toneClasses =
+    tone === 'rejected'
+      ? 'bg-destructive/10 text-destructive'
+      : tone === 'pending'
+        ? 'bg-status-pay-bg text-status-pay'
+        : 'bg-primary-soft text-primary'
+  return (
+    <div className="bg-card mx-1 flex flex-col gap-2 rounded-2xl p-5">
+      <div className={`flex size-11 items-center justify-center rounded-2xl ${toneClasses}`}>
+        {icon}
+      </div>
+      <h1 className="text-foreground mt-1 text-[20px] leading-tight font-bold tracking-tight">
+        {title}
+      </h1>
+      <p className="text-text-soft text-[14px] leading-relaxed">{body}</p>
+    </div>
+  )
+}
+
+// ─── perks list ──────────────────────────────────────────────────────────
+function Perks({ items }: { items: { icon: React.ReactNode; title: string; body: string }[] }) {
+  return (
+    <div className="bg-card mx-1 overflow-hidden rounded-2xl">
+      {items.map((item, i) => (
+        <div
+          key={item.title}
+          className={`relative flex items-start gap-3 px-4 py-3.5 ${
+          i > 0
+              ? `before:bg-separator before:absolute before:top-0 before:right-0 before:left-[60px]
+                before:h-px before:content-[""]`
+              : ''
+          }`}
+        >
+          <div
+            className="bg-primary-soft text-primary flex size-9 shrink-0 items-center justify-center
+              rounded-[10px]"
+          >
+            {item.icon}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-foreground text-[14px] font-semibold">{item.title}</p>
+            <p className="text-text-soft mt-0.5 text-[13px] leading-snug">{item.body}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── trust footer ────────────────────────────────────────────────────────
+function TrustFooter({ text }: { text: string }) {
+  return (
+    <div className="text-hint flex items-start gap-2.5 px-1 pt-1">
+      <ShieldCheck className="size-4 shrink-0 translate-y-px" strokeWidth={1.8} />
+      <p className="text-[13px] leading-relaxed">{text}</p>
+    </div>
+  )
+}
+
+// ─── submitted-анкета preview ────────────────────────────────────────────
+function SubmittedPreview({
+  profile,
+  categoryById,
+  onEdit,
+  editLabel,
+  headerLabel,
+}: {
+  profile: Profile
+  categoryById?: Map<Id<'categories'>, Doc<'categories'>>
+  onEdit: () => void
+  editLabel: string
+  headerLabel?: string
+}) {
+  const categoryTitles = profile.categoryIds
+    .map((id) => categoryById?.get(id)?.title)
+    .filter((t): t is string => !!t)
+  return (
+    <section>
+      {headerLabel && (
+        <div className="mb-2 flex items-end justify-between px-5">
+          <h2 className="text-hint text-[12px] font-bold tracking-[0.06em] uppercase">
+            {headerLabel}
+          </h2>
+          <button
+            type="button"
+            onClick={onEdit}
+            className="text-primary -mr-1 flex items-center gap-1 px-1 text-[13px] font-semibold"
+          >
+            <Pencil className="size-3.5" />
+            {editLabel}
+          </button>
+        </div>
+      )}
+      <div className="bg-card mx-1 flex flex-col gap-3 rounded-2xl p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-foreground truncate text-[15px] font-semibold">{profile.fullName}</p>
+            {categoryById && categoryTitles.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {categoryTitles.map((title) => (
+                  <span
+                    key={title}
+                    className="bg-primary-soft text-primary inline-flex items-center rounded-full
+                      px-2 py-0.5 text-[11px] font-semibold"
+                  >
+                    {title}
+                  </span>
+                ))}
+              </div>
+            )}
+            {!categoryById && (
+              <p className="text-text-soft mt-1 text-[12px]">
+                Тематик выбрано: {profile.categoryIds.length}
+              </p>
+            )}
+          </div>
+          {!headerLabel && (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="text-primary flex shrink-0 items-center gap-1 px-1 text-[13px]
+                font-semibold"
+            >
+              <Pencil className="size-3.5" />
+              {editLabel}
+            </button>
+          )}
+        </div>
+        <PreviewField label="О себе" value={profile.bio} />
+        <PreviewField label="Квалификация и опыт" value={profile.qualifications} />
+      </div>
+    </section>
+  )
+}
+
+function PreviewField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-hint text-[11px] font-bold tracking-[0.06em] uppercase">{label}</span>
+      <p className="text-text-soft text-[13px] leading-relaxed whitespace-pre-wrap">{value}</p>
+    </div>
+  )
+}
+
+// ─── available pool section ──────────────────────────────────────────────
 function AvailableSection({
   available,
   hasActive,
@@ -175,6 +479,7 @@ function AvailableSection({
   categoryById: Map<Id<'categories'>, Doc<'categories'>>
   onEditProfile: () => void
 }) {
+  const [selectedId, setSelectedId] = useState<Id<'orders'> | null>(null)
   const count = available?.length ?? 0
   const title = (
     <span className="flex items-center gap-2">
@@ -191,16 +496,18 @@ function AvailableSection({
     </span>
   )
 
-  // Loading.
   if (available === undefined) {
     return (
       <Section title={title}>
-        <div className="bg-secondary mx-4 h-24 animate-pulse rounded-2xl" />
+        <div className="bg-card mx-4 flex flex-col gap-3 overflow-hidden rounded-2xl p-4">
+          <SkeletonRow />
+          <div className="bg-separator h-px" />
+          <SkeletonRow />
+        </div>
       </Section>
     )
   }
 
-  // No categories selected — block by anketa, not by orders.
   if (hasNoCategories) {
     return (
       <Section title={title}>
@@ -214,7 +521,6 @@ function AvailableSection({
     )
   }
 
-  // No matching paid orders right now.
   if (count === 0) {
     return (
       <Section title={title}>
@@ -228,24 +534,43 @@ function AvailableSection({
     )
   }
 
-  // Have orders to pick.
   return (
-    <Section
-      title={title}
-      hint={hasActive ? 'Завершите текущую заявку, чтобы взять новую' : undefined}
-    >
-      <div className="bg-card mx-4 overflow-hidden rounded-2xl">
-        {available.map((o, i) => (
-          <AvailableOrderRow
-            key={o._id}
-            order={o}
-            category={categoryById.get(o.categoryId)}
-            hasActive={hasActive}
-            isFirst={i === 0}
-          />
-        ))}
+    <>
+      <Section
+        title={title}
+        hint={hasActive ? 'Завершите текущую заявку, чтобы взять новую' : undefined}
+      >
+        <div className="bg-card mx-4 overflow-hidden rounded-2xl">
+          {available.map((o, i) => (
+            <AvailableOrderRow
+              key={o._id}
+              order={o}
+              category={categoryById.get(o.categoryId)}
+              isFirst={i === 0}
+              onSelect={() => setSelectedId(o._id)}
+            />
+          ))}
+        </div>
+      </Section>
+      <AvailableOrderSheet
+        orderId={selectedId}
+        hasActive={hasActive}
+        onClose={() => setSelectedId(null)}
+      />
+    </>
+  )
+}
+
+function SkeletonRow() {
+  return (
+    <div className="flex animate-pulse items-start gap-3">
+      <div className="bg-secondary size-10 shrink-0 rounded-[10px]" />
+      <div className="flex flex-1 flex-col gap-2">
+        <div className="bg-secondary h-3.5 w-2/3 rounded-full" />
+        <div className="bg-secondary h-3 w-full rounded-full" />
+        <div className="bg-secondary h-3 w-5/12 rounded-full" />
       </div>
-    </Section>
+    </div>
   )
 }
 
@@ -284,72 +609,21 @@ function EmptyCard({
   )
 }
 
-// ─── profile summary card ─────────────────────────────────────────────────
-function ProfileCard({
-  fullName,
-  bio,
-  qualifications,
-  categoryTitles,
-  onEdit,
+// ─── balance ─────────────────────────────────────────────────────────────
+// Two figures side-by-side under one card:
+//   - "К выплате" — the current accrued balance (zeroed on each payout)
+//   - "Заработано" — lifetime sum of accruals, survives payouts
+// The pair gives the executor a real sense of what they've earned through
+// completed заявки, not just what they're about to be paid.
+function BalanceCard({
+  balance,
+  lifetimeEarned,
+  completedCount,
 }: {
-  fullName: string
-  bio: string
-  qualifications: string
-  categoryTitles: string[]
-  onEdit: () => void
+  balance: number
+  lifetimeEarned: number
+  completedCount: number
 }) {
-  return (
-    <section>
-      <div className="mb-2 flex items-end justify-between px-5">
-        <h2 className="text-hint text-[12px] font-bold tracking-[0.06em] uppercase">Анкета</h2>
-        <button
-          type="button"
-          onClick={onEdit}
-          className="text-primary -mr-1 flex items-center gap-1 px-1 text-[13px] font-semibold"
-        >
-          <Pencil className="size-3.5" />
-          Изменить
-        </button>
-      </div>
-      <div className="bg-card mx-4 flex flex-col gap-3 rounded-2xl p-4">
-        <div>
-          <p className="text-foreground text-[15px] font-semibold">{fullName}</p>
-          {categoryTitles.length > 0 ? (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {categoryTitles.map((title) => (
-                <span
-                  key={title}
-                  className="bg-primary-soft text-primary inline-flex items-center rounded-full px-2
-                    py-0.5 text-[11px] font-semibold"
-                >
-                  {title}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-status-pay mt-2 text-[12px] font-semibold">
-              Тематики не выбраны — заявки не появятся
-            </p>
-          )}
-        </div>
-        <Field label="О себе" value={bio} />
-        <Field label="Квалификация и опыт" value={qualifications} />
-      </div>
-    </section>
-  )
-}
-
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-hint text-[11px] font-bold tracking-[0.06em] uppercase">{label}</span>
-      <p className="text-text-soft text-[13px] leading-relaxed whitespace-pre-wrap">{value}</p>
-    </div>
-  )
-}
-
-// ─── balance ──────────────────────────────────────────────────────────────
-function BalanceCard({ balance }: { balance: number }) {
   return (
     <div className="bg-primary-soft mx-4 rounded-2xl p-4">
       <div className="text-text-soft text-[12px] font-bold tracking-[0.06em] uppercase">
@@ -358,14 +632,43 @@ function BalanceCard({ balance }: { balance: number }) {
       <div className="text-foreground mt-1 text-[28px] leading-none font-bold tabular-nums">
         {formatKopecks(balance)}
       </div>
-      <div className="text-text-soft mt-1.5 text-[13px]">
+
+      <div className="border-primary/15 mt-3.5 grid grid-cols-2 gap-3 border-t pt-3">
+        <Stat label="Заработано всего" value={formatKopecks(lifetimeEarned)} />
+        <Stat
+          label="Выполнено заявок"
+          value={`${completedCount} ${pluralRu(completedCount, 'заявка', 'заявки', 'заявок')}`}
+        />
+      </div>
+
+      <div className="text-text-soft mt-3 text-[13px]">
         Начисляется после подтверждения заказчиком. Выплаты — администратором.
       </div>
     </div>
   )
 }
 
-// ─── shared section header ────────────────────────────────────────────────
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-hint text-[11px] font-bold tracking-[0.04em] uppercase">{label}</div>
+      <div className="text-foreground mt-0.5 truncate text-[16px] font-bold tabular-nums">
+        {value}
+      </div>
+    </div>
+  )
+}
+
+function pluralRu(n: number, one: string, few: string, many: string): string {
+  const abs = Math.abs(n) % 100
+  const last = abs % 10
+  if (abs > 10 && abs < 20) return many
+  if (last === 1) return one
+  if (last >= 2 && last <= 4) return few
+  return many
+}
+
+// ─── shared section header ───────────────────────────────────────────────
 function Section({
   title,
   hint,
@@ -386,7 +689,16 @@ function Section({
   )
 }
 
-// ─── helpers ──────────────────────────────────────────────────────────────
+// ─── helpers ─────────────────────────────────────────────────────────────
+function toInitial(profile: Profile): ExecutorApplicationInitial {
+  return {
+    fullName: profile.fullName,
+    bio: profile.bio,
+    qualifications: profile.qualifications,
+    categoryIds: [...profile.categoryIds],
+  }
+}
+
 function splitAssigned(orders: Order[]): { active: Order[]; closed: Order[] } {
   const active: Order[] = []
   const closed: Order[] = []

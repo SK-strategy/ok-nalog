@@ -62,7 +62,19 @@ export const apply = mutation({
   },
 })
 
-/** Current user's executor profile + recent ledger entries (for the cabinet). */
+/**
+ * Current user's executor profile + recent ledger entries + lifetime stats
+ * (for the cabinet).
+ *
+ * `profile.balance` is the *current* pay-out balance — it gets zeroed on
+ * every payout, so it doesn't tell the executor how much they've earned
+ * historically. `lifetimeEarned` (sum of all accrual transactions) and
+ * `completedCount` (# of accruals) survive payouts and give the cabinet
+ * a meaningful "you've earned X over Y заявок" stat alongside it.
+ *
+ * Lifetime stats walk the full transactions index — fine at our scale; if
+ * it ever matters we can denormalise the counters onto the profile row.
+ */
 export const myProfile = query({
   args: {},
   handler: async (ctx) => {
@@ -77,7 +89,19 @@ export const myProfile = query({
       .withIndex('by_executor', (q) => q.eq('executorProfileId', profile._id))
       .order('desc')
       .take(50)
-    return { profile, transactions }
+    const allTransactions = await ctx.db
+      .query('transactions')
+      .withIndex('by_executor', (q) => q.eq('executorProfileId', profile._id))
+      .collect()
+    let lifetimeEarned = 0
+    let completedCount = 0
+    for (const t of allTransactions) {
+      if (t.type === 'accrual') {
+        lifetimeEarned += t.amount
+        completedCount += 1
+      }
+    }
+    return { profile, transactions, lifetimeEarned, completedCount }
   },
 })
 

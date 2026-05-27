@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Manrope } from 'next/font/google'
 
 import { cn } from '@tax-assistant/ui'
 
@@ -15,28 +15,27 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: 'white' },
-    { media: '(prefers-color-scheme: dark)', color: 'black' },
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#17212b' },
   ],
 }
 
-const geistSans = Geist({
-  subsets: ['latin'],
-  variable: '--font-geist-sans',
-})
-const geistMono = Geist_Mono({
-  subsets: ['latin'],
-  variable: '--font-geist-mono',
+// Same Manrope wiring as the TMA — exposes `--font-sans-app`, which the
+// shared theme reads via `var(--font-sans-app, var(--font-geist-sans, ...))`.
+// Keeps the visual language aligned across surfaces.
+const manrope = Manrope({
+  subsets: ['latin', 'cyrillic'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-sans-app',
 })
 
 export default function RootLayout(props: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="ru" suppressHydrationWarning>
       <body
         className={cn(
           'bg-background text-foreground min-h-screen font-sans antialiased',
-          geistSans.variable,
-          geistMono.variable,
+          manrope.variable,
         )}
       >
         <Providers>

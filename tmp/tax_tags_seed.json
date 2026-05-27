@@ -1,0 +1,385 @@
+{
+  "$schema_version": "1.0",
+  "description": "Seed данных для налогового ассистента: справочник тэгов с категоризацией по типу клиента и тематической группе",
+  "source": "Облако_тэгов.xlsx",
+
+  "client_types": [
+    {
+      "code": "legal_entity_ie",
+      "name": "Юридическое лицо / ИП",
+      "short_name": "ЮЛ/ИП",
+      "description": "Организации и индивидуальные предприниматели"
+    },
+    {
+      "code": "individual",
+      "name": "Физическое лицо",
+      "short_name": "ФЛ",
+      "description": "Физические лица, не являющиеся ИП и плательщиками НПД"
+    },
+    {
+      "code": "npd_payer",
+      "name": "Плательщик НПД",
+      "short_name": "НПД",
+      "description": "Самозанятые — плательщики налога на профессиональный доход"
+    }
+  ],
+
+  "categories": [
+    {
+      "code": "tax_audits",
+      "name": "Налоговые проверки",
+      "description": "Камеральные и выездные проверки, акты, обжалование"
+    },
+    {
+      "code": "main_taxes",
+      "name": "Основные налоги",
+      "description": "НДС, налог на прибыль, НДФЛ и другие федеральные налоги"
+    },
+    {
+      "code": "special_regimes",
+      "name": "Специальные налоговые режимы",
+      "description": "УСН, АУСН, ПСН, ЕСХН, НПД"
+    },
+    {
+      "code": "property_taxes",
+      "name": "Имущественные налоги",
+      "description": "Налог на имущество, транспортный, земельный налог"
+    },
+    {
+      "code": "resource_taxes",
+      "name": "Ресурсные налоги и акцизы",
+      "description": "НДПИ, водный налог, акцизы, сборы за пользование объектами животного мира"
+    },
+    {
+      "code": "reporting",
+      "name": "Отчётность и взносы",
+      "description": "6-НДФЛ, страховые взносы, бухгалтерская отчётность"
+    },
+    {
+      "code": "tax_authority_interaction",
+      "name": "Взаимодействие с налоговыми органами",
+      "description": "Вызовы, требования, истребование документов, допросы"
+    },
+    {
+      "code": "enforcement",
+      "name": "Принудительные меры и взыскание",
+      "description": "Приостановление операций по счетам, административное производство, банкротство"
+    },
+    {
+      "code": "registration",
+      "name": "Регистрационные действия",
+      "description": "Регистрация, ликвидация, достоверность сведений в ЕГРЮЛ/ЕГРНИП"
+    },
+    {
+      "code": "other",
+      "name": "Прочее",
+      "description": "ККТ, РСМП, ЕНС, оптимизация налогообложения"
+    }
+  ],
+
+  "tags": [
+    {
+      "code": "kameralnaya_proverka",
+      "name": "Камеральная налоговая проверка",
+      "specialist_code": "КНП",
+      "category": "tax_audits",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "vyezdnaya_proverka",
+      "name": "Выездная налоговая проверка",
+      "specialist_code": "ВНП",
+      "category": "tax_audits",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "nalogovaya_proverka",
+      "name": "Налоговая проверка",
+      "specialist_code": null,
+      "category": "tax_audits",
+      "client_types": ["legal_entity_ie", "individual"]
+    },
+    {
+      "code": "akt_proverki",
+      "name": "Акт проверки",
+      "specialist_code": null,
+      "category": "tax_audits",
+      "client_types": ["legal_entity_ie", "individual"]
+    },
+    {
+      "code": "kao",
+      "name": "Контрольно-аналитический отдел (КАО)",
+      "specialist_code": "КАО",
+      "category": "tax_audits",
+      "client_types": ["legal_entity_ie"]
+    },
+
+    {
+      "code": "nds",
+      "name": "НДС",
+      "specialist_code": "НДС",
+      "category": "main_taxes",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "nalog_na_pribyl",
+      "name": "Налог на прибыль",
+      "specialist_code": "Налог на прибыль",
+      "category": "main_taxes",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "ndfl_3",
+      "name": "3-НДФЛ",
+      "specialist_code": "3НДФЛ",
+      "category": "main_taxes",
+      "client_types": ["individual"]
+    },
+    {
+      "code": "ndfl_6",
+      "name": "6-НДФЛ",
+      "specialist_code": "6НДФЛ",
+      "category": "reporting",
+      "client_types": ["legal_entity_ie"]
+    },
+
+    {
+      "code": "strahovye_vznosy",
+      "name": "Страховые взносы",
+      "specialist_code": "СВ",
+      "category": "reporting",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "buh_otchetnost",
+      "name": "Бухгалтерская отчётность",
+      "specialist_code": "Бухгалтерская отчетность",
+      "category": "reporting",
+      "client_types": ["legal_entity_ie"]
+    },
+
+    {
+      "code": "usn",
+      "name": "УСН",
+      "specialist_code": "УСН/АУСН",
+      "category": "special_regimes",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "ausn",
+      "name": "АУСН",
+      "specialist_code": "УСН/АУСН",
+      "category": "special_regimes",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "patent",
+      "name": "Патентная система налогообложения",
+      "specialist_code": "Патент",
+      "category": "special_regimes",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "eshn",
+      "name": "ЕСХН",
+      "specialist_code": "ЕСХН",
+      "category": "special_regimes",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "npd",
+      "name": "НПД (Налог на профессиональный доход)",
+      "specialist_code": "НПД ЮЛ/НПД ФЛ",
+      "category": "special_regimes",
+      "client_types": ["legal_entity_ie", "npd_payer"]
+    },
+
+    {
+      "code": "nalog_na_imuschestvo_ul",
+      "name": "Налог на имущество ЮЛ",
+      "specialist_code": "Имущественные налоги ЮЛ",
+      "category": "property_taxes",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "transportnyy_nalog_ul",
+      "name": "Транспортный налог ЮЛ",
+      "specialist_code": "Имущественные налоги ЮЛ",
+      "category": "property_taxes",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "zemelnyy_nalog_ul",
+      "name": "Земельный налог ЮЛ",
+      "specialist_code": "Имущественные налоги ЮЛ",
+      "category": "property_taxes",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "imuschestvennye_nalogi_fl",
+      "name": "Имущественные налоги ФЛ",
+      "specialist_code": "Имущественные налоги ФЛ",
+      "category": "property_taxes",
+      "client_types": ["individual"]
+    },
+    {
+      "code": "svodnoe_nu",
+      "name": "Сводное налоговое уведомление",
+      "specialist_code": "СНУ",
+      "category": "property_taxes",
+      "client_types": ["individual"]
+    },
+
+    {
+      "code": "akcizy",
+      "name": "Акцизы",
+      "specialist_code": "Акцизы",
+      "category": "resource_taxes",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "ndpi",
+      "name": "НДПИ",
+      "specialist_code": "НДПИ",
+      "category": "resource_taxes",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "vodnyy_nalog",
+      "name": "Водный налог",
+      "specialist_code": "Водный налог",
+      "category": "resource_taxes",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "zhivotnyy_mir",
+      "name": "Животный мир, водные биологические ресурсы",
+      "specialist_code": "Животный мир, водные биологические ресурсы",
+      "category": "resource_taxes",
+      "client_types": ["legal_entity_ie"]
+    },
+
+    {
+      "code": "vyzov_v_no",
+      "name": "Вызов в налоговый орган",
+      "specialist_code": null,
+      "category": "tax_authority_interaction",
+      "client_types": ["legal_entity_ie", "individual", "npd_payer"]
+    },
+    {
+      "code": "trebovanie_poyasneniy",
+      "name": "Требование о представлении пояснений",
+      "specialist_code": null,
+      "category": "tax_authority_interaction",
+      "client_types": ["legal_entity_ie", "individual"]
+    },
+    {
+      "code": "vyzov_na_dopros",
+      "name": "Вызов на допрос",
+      "specialist_code": null,
+      "category": "tax_authority_interaction",
+      "client_types": ["legal_entity_ie", "individual", "npd_payer"]
+    },
+    {
+      "code": "istrebovanie_dokumentov",
+      "name": "Истребование документов",
+      "specialist_code": null,
+      "category": "tax_authority_interaction",
+      "client_types": ["legal_entity_ie"]
+    },
+
+    {
+      "code": "priostanovlenie_operaciy",
+      "name": "Приостановление операций по счетам",
+      "specialist_code": null,
+      "category": "enforcement",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "administrativnoe_proizvodstvo",
+      "name": "Административное производство",
+      "specialist_code": "Административное производство",
+      "category": "enforcement",
+      "client_types": ["legal_entity_ie", "individual"]
+    },
+    {
+      "code": "bankrotstvo",
+      "name": "Банкротство",
+      "specialist_code": "Банкротство",
+      "category": "enforcement",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "zadolzhennost",
+      "name": "Задолженность",
+      "specialist_code": "Задолженность",
+      "category": "enforcement",
+      "client_types": ["legal_entity_ie"]
+    },
+
+    {
+      "code": "registraciya",
+      "name": "Регистрация",
+      "specialist_code": "Госрегистрация",
+      "category": "registration",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "likvidaciya",
+      "name": "Ликвидация",
+      "specialist_code": null,
+      "category": "registration",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "dostovernost_egrul",
+      "name": "Достоверность ЕГРЮЛ",
+      "specialist_code": null,
+      "category": "registration",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "dostovernost_egrnip",
+      "name": "Достоверность ЕГРНИП",
+      "specialist_code": null,
+      "category": "registration",
+      "client_types": ["legal_entity_ie"]
+    },
+
+    {
+      "code": "ens",
+      "name": "ЕНС (Единый налоговый счёт)",
+      "specialist_code": null,
+      "category": "other",
+      "client_types": ["legal_entity_ie", "individual", "npd_payer"]
+    },
+    {
+      "code": "kkt",
+      "name": "ККТ (Контрольно-кассовая техника)",
+      "specialist_code": "ККТ",
+      "category": "other",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "rsmp",
+      "name": "РСМП (Реестр субъектов малого и среднего предпринимательства)",
+      "specialist_code": null,
+      "category": "other",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "optimizaciya",
+      "name": "Оптимизация налогообложения",
+      "specialist_code": null,
+      "category": "other",
+      "client_types": ["legal_entity_ie"]
+    },
+    {
+      "code": "voprosy_po_prilozheniyu",
+      "name": "Вопросы по приложению",
+      "specialist_code": null,
+      "category": "other",
+      "client_types": ["npd_payer"]
+    }
+  ]
+}

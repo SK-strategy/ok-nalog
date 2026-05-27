@@ -1,12 +1,14 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from 'convex/react'
-import { Check, ChevronDown, ChevronRight, Search } from 'lucide-react'
+import { ChevronRight, Clock, Search, Sparkles, XCircle } from 'lucide-react'
 
 import { formatKopecks, isTerminal } from '@tax-assistant/validators'
 
+import type { HomeMode } from '~/widgets/mode-switcher'
+import { ModeSwitcher, useHomeMode } from '~/widgets/mode-switcher'
 import { TmaScreen } from '~/widgets/tma-shell'
 import { CategorySearchSheet, categoryStyle } from '~/entities/category'
 import { ClientTypeSegmented, useClientType } from '~/entities/client-type'
@@ -15,39 +17,25 @@ import { useSession } from '~/entities/session'
 import type { Doc, Id } from '~/shared/api'
 import { api } from '~/shared/api'
 
-import type { HomeMode } from '../lib/use-home-mode'
-import { useHomeMode } from '../lib/use-home-mode'
-
 type Category = Doc<'categories'>
 type AssignedOrder = Omit<Doc<'orders'>, 'customerId' | 'assignedExecutorId'>
 
 const NBSP = ' '
 const HOME_ORDERS_LIMIT = 3
 
-const MODE_LABEL: Record<HomeMode, string> = {
-  customer: 'Заказчик',
-  executor: 'Эксперт',
-  admin: 'Админ',
-}
-
-const MODE_HINT: Record<HomeMode, string> = {
-  customer: 'Категории и обращения',
-  executor: 'Назначенные заявки',
-  admin: 'Все заявки и настройки',
-}
-
 /**
  * Home page. Default view follows role: admins land on the admin overview,
- * approved executors on their dashboard, everyone else on the customer
- * catalogue. A header dropdown lets users with multiple roles flip between
- * them (the choice persists across sessions). Admins keep customer/executor
- * access too — admins-who-are-also-executors can switch all three ways.
+ * approved executors on their cabinet at /executor (this page redirects to
+ * it), everyone else on the customer catalogue. A header dropdown lets
+ * users with multiple roles flip between dashboards — it persists the
+ * choice and navigates to the canonical route for the new mode.
  */
 export function HomePage() {
+  const router = useRouter()
   const { me } = useSession()
   const isAdmin = me?.user.role === 'admin'
   const isExecutor = me?.executor?.status === 'approved'
-  const [explicitMode, setMode] = useHomeMode()
+  const [explicitMode, , hydrated] = useHomeMode()
 
   // Pin the mode to one the user actually has access to — a stale preference
   // shouldn't strand a downgraded user in an empty cabinet.
@@ -59,18 +47,31 @@ export function HomePage() {
   const requested = explicitMode ?? defaultMode
   const mode: HomeMode = allowed.includes(requested) ? requested : defaultMode
 
-  const switcher =
-    allowed.length > 1 ? <ModeSwitcher mode={mode} allowed={allowed} onChange={setMode} /> : null
+  // The executor cabinet is its own route. When the resolved mode lands on
+  // executor at `/`, bounce to /executor so the user sees the full surface
+  // (available pool, claim flow, balance, анкета) instead of a stripped
+  // home-embedded view. Wait for the persisted preference to hydrate first;
+  // otherwise switching back to "Заказчик" from /executor would race the
+  // localStorage read and bounce right back.
+  useEffect(() => {
+    if (!hydrated) return
+    if (mode === 'executor') router.replace('/executor')
+  }, [hydrated, mode, router])
+
+  // Hold the screen blank during hydration + redirect rather than flashing
+  // the wrong dashboard.
+  if (!hydrated || mode === 'executor') return <div className="bg-background h-full" />
+
+  const switcher = <ModeSwitcher current={mode} allowed={allowed} />
 
   if (mode === 'admin') return <AdminHome switcher={switcher} />
-  if (mode === 'executor') return <ExecutorHome switcher={switcher} />
   return <CustomerHome switcher={switcher} />
 }
 
 // ─── customer view ────────────────────────────────────────────────────────
 function CustomerHome({ switcher }: { switcher: React.ReactNode }) {
   const router = useRouter()
-  const { isAuthenticated } = useSession()
+  const { isAuthenticated, me } = useSession()
   const [clientType, setClientType] = useClientType()
   const categories = useQuery(
     api.categories.listForClientType,
@@ -184,6 +185,11 @@ function CustomerHome({ switcher }: { switcher: React.ReactNode }) {
             )}
           </div>
         </section>
+
+        <BecomeExecutorCard
+          executorStatus={me?.executor?.status}
+          onOpen={() => router.push('/executor')}
+        />
       </div>
 
       <CategorySearchSheet
@@ -193,57 +199,6 @@ function CustomerHome({ switcher }: { switcher: React.ReactNode }) {
         clientType={clientType}
         title="Поиск по категориям"
       />
-    </TmaScreen>
-  )
-}
-
-// ─── executor view ────────────────────────────────────────────────────────
-function ExecutorHome({ switcher }: { switcher: React.ReactNode }) {
-  const router = useRouter()
-  const { me, isAuthenticated } = useSession()
-  const balance = me?.executor?.balance ?? 0
-  const orders = useQuery(api.orders.assignedToMe, isAuthenticated ? {} : 'skip')
-  const categories = useQuery(api.categories.listActive, isAuthenticated ? {} : 'skip')
-
-  const categoryById = useMemo(
-    () => new Map((categories ?? []).map((c) => [c._id, c])),
-    [categories],
-  )
-  const { active, closed } = useMemo(() => splitAssigned(orders ?? []), [orders])
-
-  return (
-    <TmaScreen title="Кабинет эксперта" back={false} rightAction={switcher}>
-      <div className="flex flex-col gap-5 pt-3 pb-2">
-        <BalanceCard balance={balance} />
-
-        {orders === undefined ? (
-          <OrdersSkeleton />
-        ) : orders.length === 0 ? (
-          <EmptyState
-            title="Назначенных заявок пока нет"
-            hint="Откройте кабинет — там подобраны заявки в ваших тематиках, которые можно взять в работу."
-          />
-        ) : (
-          <>
-            {active.length > 0 && (
-              <OrdersSection
-                title={`В работе · ${active.length}`}
-                orders={active}
-                categoryById={categoryById}
-                onOpen={(id) => router.push(`/orders/${id}`)}
-              />
-            )}
-            {closed.length > 0 && (
-              <OrdersSection
-                title={`Завершённые · ${closed.length}`}
-                orders={closed}
-                categoryById={categoryById}
-                onOpen={(id) => router.push(`/orders/${id}`)}
-              />
-            )}
-          </>
-        )}
-      </div>
     </TmaScreen>
   )
 }
@@ -302,84 +257,6 @@ function AdminHome({ switcher }: { switcher: React.ReactNode }) {
   )
 }
 
-// ─── mode switcher (small popover dropdown) ───────────────────────────────
-function ModeSwitcher({
-  mode,
-  allowed,
-  onChange,
-}: {
-  mode: HomeMode
-  allowed: HomeMode[]
-  onChange: (m: HomeMode) => void
-}) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="bg-secondary text-foreground flex items-center gap-1 rounded-lg px-2 py-1
-          text-[13px] font-semibold"
-        aria-haspopup="menu"
-        aria-expanded={open}
-      >
-        {MODE_LABEL[mode]}
-        <ChevronDown className="size-3.5" />
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} role="presentation" />
-          <div
-            className="border-separator bg-background absolute top-full right-0 z-50 mt-1 w-56
-              overflow-hidden rounded-xl border shadow-lg"
-            role="menu"
-          >
-            {allowed.map((m) => (
-              <ModeOption
-                key={m}
-                label={MODE_LABEL[m]}
-                hint={MODE_HINT[m]}
-                selected={mode === m}
-                onClick={() => {
-                  onChange(m)
-                  setOpen(false)
-                }}
-              />
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
-
-function ModeOption({
-  label,
-  hint,
-  selected,
-  onClick,
-}: {
-  label: string
-  hint: string
-  selected: boolean
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      role="menuitem"
-      className="active:bg-secondary flex w-full items-start gap-3 px-3 py-2.5 text-left"
-    >
-      <div className="min-w-0 flex-1">
-        <div className="text-foreground text-[14px] leading-tight font-semibold">{label}</div>
-        <div className="text-text-soft mt-0.5 text-[12px] leading-tight">{hint}</div>
-      </div>
-      {selected && <Check className="text-primary mt-0.5 size-4 shrink-0" />}
-    </button>
-  )
-}
-
 // ─── shared list primitives ───────────────────────────────────────────────
 function OrdersSection({
   title,
@@ -429,6 +306,72 @@ function EmptyState({ title, hint }: { title: string; hint: string }) {
   )
 }
 
+// ─── become-executor entry point ─────────────────────────────────────────
+// Approved executors already have the mode switcher; the rest of the world
+// gets a discreet card on the customer home — status-aware so a pending or
+// rejected user lands on the right screen rather than a generic prompt.
+function BecomeExecutorCard({
+  executorStatus,
+  onOpen,
+}: {
+  executorStatus: 'pending' | 'approved' | 'rejected' | undefined
+  onOpen: () => void
+}) {
+  if (executorStatus === 'approved') return null
+
+  const config =
+    executorStatus === 'pending'
+      ? {
+          icon: <Clock className="size-5" strokeWidth={1.8} />,
+          tone: 'pending' as const,
+          title: 'Анкета на проверке',
+          body: 'Администратор рассматривает вашу заявку. Откройте, чтобы посмотреть, что отправили.',
+          cta: 'Открыть',
+        }
+      : executorStatus === 'rejected'
+        ? {
+            icon: <XCircle className="size-5" strokeWidth={1.8} />,
+            tone: 'rejected' as const,
+            title: 'Анкета не прошла проверку',
+            body: 'Поправьте анкету и отправьте её на повторное рассмотрение.',
+            cta: 'Поправить',
+          }
+        : {
+            icon: <Sparkles className="size-5" strokeWidth={1.8} />,
+            tone: 'primary' as const,
+            title: 'Стать экспертом',
+            body: 'Консультируйте по своей теме и получайте вознаграждение. Несколько минут на анкету.',
+            cta: 'Подать анкету',
+          }
+
+  const toneClasses =
+    config.tone === 'rejected'
+      ? 'bg-destructive/10 text-destructive'
+      : config.tone === 'pending'
+        ? 'bg-status-pay-bg text-status-pay'
+        : 'bg-primary-soft text-primary'
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="bg-card mx-4 flex items-center gap-3 rounded-2xl p-4 text-left transition-opacity
+        active:opacity-80"
+    >
+      <div
+        className={`flex size-10 shrink-0 items-center justify-center rounded-[10px] ${toneClasses}`}
+      >
+        {config.icon}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-foreground text-[14px] font-semibold">{config.title}</p>
+        <p className="text-text-soft mt-0.5 text-[12px] leading-snug">{config.body}</p>
+      </div>
+      <span className="text-primary shrink-0 text-[13px] font-semibold">{config.cta}</span>
+    </button>
+  )
+}
+
 // ─── eyebrow + right slot ──────────────────────────────────────────────────
 function SectionHeader({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
@@ -471,23 +414,6 @@ function CategorySkeleton() {
   return <div className="bg-secondary h-[136px] animate-pulse rounded-2xl" />
 }
 
-// ─── executor balance card ────────────────────────────────────────────────
-function BalanceCard({ balance }: { balance: number }) {
-  return (
-    <div className="bg-primary-soft mx-4 rounded-2xl p-4">
-      <div className="text-text-soft text-[12px] font-bold tracking-[0.06em] uppercase">
-        Баланс к выплате
-      </div>
-      <div className="text-foreground mt-1 text-[28px] leading-none font-bold tabular-nums">
-        {formatKopecks(balance)}
-      </div>
-      <div className="text-text-soft mt-1.5 text-[13px]">
-        Начисляется после подтверждения заказчиком. Выплаты — администратором.
-      </div>
-    </div>
-  )
-}
-
 // Admin queue split: anything where the admin is the one blocking the
 // pipeline (pricing, payment confirmation, executor assignment, expiry
 // recovery) shows up at the top so it's tappable without scrolling.
@@ -507,17 +433,4 @@ function bucketAdmin(orders: AssignedOrder[]): {
     else inFlight.push(o)
   }
   return { needsAction, inFlight, done }
-}
-
-function splitAssigned(orders: AssignedOrder[]): {
-  active: AssignedOrder[]
-  closed: AssignedOrder[]
-} {
-  const active: AssignedOrder[] = []
-  const closed: AssignedOrder[] = []
-  for (const o of orders) {
-    if (isTerminal(o.status)) closed.push(o)
-    else active.push(o)
-  }
-  return { active, closed }
 }
