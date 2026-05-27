@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery } from 'convex/react'
 
 import { Button } from '@tax-assistant/ui/button'
@@ -13,16 +13,41 @@ import { cn } from '~/shared/lib'
 const fieldClass =
   'border-input bg-background focus-visible:ring-ring rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none'
 
-export function ExecutorApplicationForm({ onSubmitted }: { onSubmitted?: () => void }) {
+export interface ExecutorApplicationInitial {
+  fullName: string
+  bio: string
+  qualifications: string
+  categoryIds: Id<'categories'>[]
+}
+
+export function ExecutorApplicationForm({
+  initial,
+  onSubmitted,
+  submitLabel = 'Отправить анкету',
+}: {
+  initial?: ExecutorApplicationInitial
+  onSubmitted?: () => void
+  submitLabel?: string
+}) {
   const { isAuthenticated } = useSession()
   const categories = useQuery(api.categories.listActive, isAuthenticated ? {} : 'skip')
   const apply = useMutation(api.executors.apply)
 
-  const [fullName, setFullName] = useState('')
-  const [bio, setBio] = useState('')
-  const [qualifications, setQualifications] = useState('')
-  const [categoryIds, setCategoryIds] = useState<Id<'categories'>[]>([])
+  const [fullName, setFullName] = useState(initial?.fullName ?? '')
+  const [bio, setBio] = useState(initial?.bio ?? '')
+  const [qualifications, setQualifications] = useState(initial?.qualifications ?? '')
+  const [categoryIds, setCategoryIds] = useState<Id<'categories'>[]>(initial?.categoryIds ?? [])
   const [busy, setBusy] = useState(false)
+
+  // Re-sync if the parent swaps out the initial values (e.g. opening the
+  // edit sheet for a different anketa snapshot).
+  useEffect(() => {
+    if (!initial) return
+    setFullName(initial.fullName)
+    setBio(initial.bio)
+    setQualifications(initial.qualifications)
+    setCategoryIds(initial.categoryIds)
+  }, [initial])
 
   function toggle(id: Id<'categories'>) {
     setCategoryIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
@@ -101,7 +126,7 @@ export function ExecutorApplicationForm({ onSubmitted }: { onSubmitted?: () => v
       </div>
 
       <Button disabled={!canSubmit} onClick={() => void submit()}>
-        {busy ? 'Отправка…' : 'Отправить анкету'}
+        {busy ? 'Сохраняем…' : submitLabel}
       </Button>
     </div>
   )

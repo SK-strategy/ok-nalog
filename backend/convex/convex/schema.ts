@@ -55,12 +55,11 @@ export default defineSchema({
     .index('by_code', ['code']),
 
   // ── Tags (specific topics inside a category) ──────────────────────────────
-  // The customer picks a tag in the new-question form so the admin/executor
-  // get a precise topic and matching `specialistCode` for routing.
+  // The customer picks a tag in the new-question form so the admin and the
+  // executor know the precise topic. Routing now flows through the
+  // executor's own `categoryIds` selection — no separate specialist code.
   tags: defineTable({
-    code: v.string(),
     name: v.string(),
-    specialistCode: v.optional(v.string()),
     categoryId: v.id('categories'),
     clientTypes: v.array(clientType),
     sortOrder: v.number(),
@@ -68,7 +67,6 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index('by_code', ['code'])
     .index('by_category', ['categoryId'])
     .index('by_active_category', ['isActive', 'categoryId']),
 

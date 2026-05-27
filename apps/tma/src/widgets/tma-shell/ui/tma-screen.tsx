@@ -59,7 +59,12 @@ export function TmaScreen({
   const hasHeader = !!title || !!subtitle || showInPageBack || !!rightAction
 
   return (
-    <div className="bg-background flex min-h-dvh flex-col">
+    // `h-full` — exactly the parent container's height, not the OS dvh.
+    // Pairs with `h-full` on html/body in the root layout so the chain
+    // resolves to the actual Telegram panel size; `min-h-dvh` would over-
+    // size the outer in embedded contexts (desktop chat panel, iframe
+    // preview) and force the page itself to scroll.
+    <div className="bg-background flex h-full flex-col">
       {hasHeader && (
         <Header
           title={title}
@@ -70,8 +75,17 @@ export function TmaScreen({
         />
       )}
 
+      {/* `min-h-0` is the difference between the body genuinely constraining
+       *  its children and merely clipping them: flex items default to
+       *  `min-height: auto`, which equals min-content height, so a tall
+       *  chat timeline would push the body past its `flex-1` share and
+       *  inflate the outer past `min-h-dvh` — scrolling the whole page. */}
       <div
-        className={cn('flex-1 overflow-y-auto', showInPageMainButton && 'pb-[66px]', bodyClassName)}
+        className={cn(
+          'min-h-0 flex-1 overflow-y-auto',
+          showInPageMainButton && 'pb-[66px]',
+          bodyClassName,
+        )}
       >
         {children}
       </div>
@@ -82,6 +96,10 @@ export function TmaScreen({
 }
 
 // ─── header (in-page; Telegram has its own chrome above the WebView) ─────
+// Three-column grid (back / title / action). The middle column uses
+// `minmax(0, 1fr)` + `min-w-0` so its `truncate` actually kicks in; an
+// absolute-centered title overlaps the right slot as soon as that slot
+// gets wider than an icon, which the home page's mode switcher is.
 function Header({
   title,
   subtitle,
@@ -96,38 +114,36 @@ function Header({
   onBack: () => void
 }) {
   return (
-    <header className="border-separator bg-background sticky top-0 z-20 flex h-11 items-center px-4">
-      {showBack && (
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-primary -ml-2 flex items-center gap-1 p-2"
-          aria-label="Назад"
-        >
-          <ChevronLeft className="size-5" />
-          <span className="text-base font-medium">Назад</span>
-        </button>
-      )}
+    <header
+      className="border-separator bg-background sticky top-0 z-20 grid h-11
+        grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-4"
+    >
+      <div className="flex items-center">
+        {showBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="text-primary -ml-2 flex items-center gap-1 p-2"
+            aria-label="Назад"
+          >
+            <ChevronLeft className="size-5" />
+            <span className="text-base font-medium">Назад</span>
+          </button>
+        )}
+      </div>
 
-      {(title || subtitle) && (
-        <div
-          className="pointer-events-none absolute top-1/2 left-1/2 max-w-[60vw] -translate-x-1/2
-            -translate-y-1/2 text-center"
-        >
-          {title && (
-            <div
-              className="text-foreground truncate text-base leading-tight font-bold tracking-tight"
-            >
-              {title}
-            </div>
-          )}
-          {subtitle && (
-            <div className="text-hint truncate text-xs leading-tight font-medium">{subtitle}</div>
-          )}
-        </div>
-      )}
+      <div className="min-w-0 text-center">
+        {title && (
+          <div className="text-foreground truncate text-base leading-tight font-bold tracking-tight">
+            {title}
+          </div>
+        )}
+        {subtitle && (
+          <div className="text-hint truncate text-xs leading-tight font-medium">{subtitle}</div>
+        )}
+      </div>
 
-      {rightAction && <div className="text-primary ml-auto flex items-center">{rightAction}</div>}
+      <div className="text-primary flex items-center justify-end">{rightAction}</div>
     </header>
   )
 }

@@ -163,12 +163,25 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>): BetterAuthOptions
     // an existing user when the email matches. Combined with the unified
     // `@telegram.local` email below, this is what keeps the same Telegram
     // person from getting two better-auth user rows when they sign in through
-    // a different flow. trustedProviders bypasses the emailVerified gate
-    // (Telegram never verifies the placeholder email).
+    // a different flow. trustedProviders bypasses the incoming-provider
+    // emailVerified gate (Telegram never verifies the placeholder email).
+    //
+    // `requireLocalEmailVerified: false` is the matching gate on the EXISTING
+    // user's record — better-auth defaults it to `true`, and rejects the link
+    // when the dbUser's emailVerified flag is false. Since every Telegram
+    // sign-in stamps emailVerified=false (placeholder `@telegram.local`), the
+    // default refuses to link a fresh OIDC sign-in onto a user previously
+    // created via Mini App / Login Widget — surfacing as "account not linked"
+    // in the OAuth callback and "No session found" from the crossDomain
+    // after-hook (which sees no session to one-time-token). Disabling it is
+    // safe here: the synthetic email is derived from the Telegram id, so the
+    // only party who can "register" `${id}@telegram.local` is the holder of
+    // that id, which is precisely what we're authenticating.
     account: {
       accountLinking: {
         enabled: true,
         trustedProviders: ['telegram', 'telegram-oidc'],
+        requireLocalEmailVerified: false,
       },
     },
     plugins: [

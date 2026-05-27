@@ -1,7 +1,7 @@
 import type { OrderStatus } from '@tax-assistant/validators'
 
 export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
-  submitted: 'На проверке',
+  submitted: 'Ищем эксперта',
   rejected: 'Отклонена',
   priced: 'Оценена',
   awaiting_payment: 'Ожидает оплаты',

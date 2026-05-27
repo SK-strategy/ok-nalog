@@ -1,27 +1,59 @@
 'use client'
 
 import { useRef } from 'react'
-import { Loader2, Paperclip, X } from 'lucide-react'
+import { ImageIcon, Loader2, Paperclip, X } from 'lucide-react'
 
+import type { UploadedFile } from '~/shared/lib/use-upload'
 import { cn } from '~/shared/lib'
+import { getFileExtension, isImageFile } from '~/shared/lib/use-upload'
 
-import type { UploadedFile } from '../lib/use-upload'
-
-const ACCEPT = 'image/*,application/pdf,.doc,.docx'
+const ACCEPT = 'image/*,application/pdf,.doc,.docx,.zip,.rar,.7z,.xls,.xlsx,.txt,.csv'
 const KB = 1024
 const MB = KB * 1024
-const MAX_FILE_SIZE = 10 * MB
 
 function formatSize(bytes: number): string {
+  if (bytes <= 0) return ''
   if (bytes < KB) return `${bytes} Б`
   if (bytes < MB) return `${Math.round(bytes / KB)} КБ`
   return `${(bytes / MB).toFixed(1)} МБ`
 }
 
-function fileKind(type: string, name: string): 'pdf' | 'img' | 'doc' {
-  if (type.startsWith('image/')) return 'img'
-  if (type === 'application/pdf' || name.toLowerCase().endsWith('.pdf')) return 'pdf'
-  return 'doc'
+const ARCHIVE_EXTS = new Set(['zip', 'rar', '7z', 'tar', 'gz', 'bz2'])
+const SPREADSHEET_EXTS = new Set(['xls', 'xlsx', 'csv', 'ods'])
+const DOCUMENT_EXTS = new Set(['pdf', 'doc', 'docx', 'odt', 'rtf', 'txt'])
+
+interface BadgeStyle {
+  palette: string
+  label: string
+  icon: 'image' | null
+}
+
+// Picks the palette + small label for the file's square badge. Images get a
+// dedicated icon (the user can't read "JPG" at thumbnail size and we don't
+// have a real preview URL once the file's uploaded to Convex storage); every
+// other file shows its actual extension (PDF, DOCX, ZIP, …) so the kind is
+// readable at a glance.
+function fileBadge(type: string, name: string): BadgeStyle {
+  if (isImageFile(type, name)) {
+    return { palette: 'bg-status-work-bg text-status-work', label: '', icon: 'image' }
+  }
+  const ext = getFileExtension(name)
+  if (ext === 'pdf')
+    return { palette: 'bg-status-fail-bg text-status-fail', label: 'PDF', icon: null }
+  if (ARCHIVE_EXTS.has(ext)) {
+    return { palette: 'bg-status-pay-bg text-status-pay', label: ext.toUpperCase(), icon: null }
+  }
+  if (SPREADSHEET_EXTS.has(ext)) {
+    return { palette: 'bg-status-done-bg text-status-done', label: ext.toUpperCase(), icon: null }
+  }
+  if (DOCUMENT_EXTS.has(ext)) {
+    return { palette: 'bg-tertiary text-text-soft', label: ext.toUpperCase(), icon: null }
+  }
+  return {
+    palette: 'bg-tertiary text-text-soft',
+    label: ext ? ext.toUpperCase() : 'FILE',
+    icon: null,
+  }
 }
 
 /**
@@ -50,26 +82,25 @@ export function AttachmentList({
   return (
     <div className="flex flex-col gap-2">
       {files.map((f) => {
-        const kind = fileKind(f.type, f.name)
-        const palette =
-          kind === 'pdf'
-            ? 'bg-status-fail-bg text-status-fail'
-            : kind === 'img'
-              ? 'bg-status-work-bg text-status-work'
-              : 'bg-tertiary text-text-soft'
+        const badge = fileBadge(f.type, f.name)
+        const size = formatSize(f.size)
         return (
           <div key={f.id} className="bg-secondary flex items-center gap-3 rounded-xl px-3 py-2.5">
             <div
               className={cn(
                 'flex size-9 shrink-0 items-center justify-center rounded-[10px]',
-                palette,
+                badge.palette,
               )}
             >
-              <span className="text-[10px] font-bold uppercase">{kind}</span>
+              {badge.icon === 'image' ? (
+                <ImageIcon className="size-5" strokeWidth={1.8} />
+              ) : (
+                <span className="text-[10px] font-bold uppercase">{badge.label}</span>
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-foreground truncate text-sm font-semibold">{f.name}</div>
-              <div className="text-hint text-xs">{formatSize(f.size)}</div>
+              {size && <div className="text-hint text-xs">{size}</div>}
             </div>
             <button
               type="button"
@@ -107,7 +138,7 @@ export function AttachmentList({
                 : 'Добавить ещё'
               : 'Достигнут лимит'}
         </span>
-        <span className="text-hint ml-auto text-[13px]">jpg · pdf · doc</span>
+        <span className="text-hint ml-auto text-[13px]">jpg · pdf · doc · zip</span>
       </button>
 
       <input
@@ -126,5 +157,3 @@ export function AttachmentList({
     </div>
   )
 }
-
-export const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE

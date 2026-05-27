@@ -1,6 +1,6 @@
 import { ConvexError, v } from 'convex/values'
 
-import { isChatOpen } from '@tax-assistant/validators'
+import { canPostMessage } from '@tax-assistant/validators'
 
 import { mutation, query } from './_generated/server'
 import { loadParticipant } from './lib/orders'
@@ -40,7 +40,11 @@ export const send = mutation({
     if (role === 'admin') {
       throw new ConvexError({ code: 'FORBIDDEN', message: 'Админ не участвует в диалоге' })
     }
-    if (!isChatOpen(order.status)) {
+    // Customer can post in any non-terminal status (clarifications, extra
+    // documents, follow-ups before accepting the answer). Executor can only
+    // post while the chat window is open. See `canPostMessage` for the
+    // exact role/status matrix.
+    if (!canPostMessage(role, order.status)) {
       throw new ConvexError({ code: 'CHAT_CLOSED', message: 'Диалог по заявке закрыт' })
     }
     return ctx.db.insert('messages', {

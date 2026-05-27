@@ -19,6 +19,23 @@ export const getUrls = query({
   args: { ids: v.array(v.id('_storage')) },
   handler: async (ctx, { ids }) => {
     await requireUser(ctx)
-    return Promise.all(ids.map(async (id) => ({ id, url: await ctx.storage.getUrl(id) })))
+    // contentType + size let the chat decide image-vs-pill rendering without
+    // having to persist the MIME on every message that references the file.
+    // `ctx.db.system.get('_storage', …)` is the non-deprecated replacement
+    // for `ctx.storage.getMetadata(…)`.
+    return Promise.all(
+      ids.map(async (id) => {
+        const [url, metadata] = await Promise.all([
+          ctx.storage.getUrl(id),
+          ctx.db.system.get(id),
+        ])
+        return {
+          id,
+          url,
+          contentType: metadata?.contentType ?? null,
+          size: metadata?.size ?? null,
+        }
+      }),
+    )
   },
 })

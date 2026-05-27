@@ -1,10 +1,10 @@
 import { ConvexError, v } from 'convex/values'
 
-import { PAYMENT_WINDOW_MS } from '@tax-assistant/validators'
+import { CLAIMABLE_STATUSES, PAYMENT_WINDOW_MS } from '@tax-assistant/validators'
 
 import type { Doc } from './_generated/dataModel'
 import { mutation, query } from './_generated/server'
-import { requireAdmin, requireExecutor, requireUser } from './lib/auth'
+import { getUser, requireAdmin, requireExecutor, requireUser } from './lib/auth'
 import { accrueForOrder } from './lib/ledger'
 import { loadParticipant, postSystem, transition } from './lib/orders'
 
@@ -61,7 +61,7 @@ export const create = mutation({
       .withIndex('by_user', (q) => q.eq('userId', user._id))
       .unique()
     if (draft) await ctx.db.delete(draft._id)
-    await postSystem(ctx, orderId, 'Заявка отправлена на проверку администратору')
+    await postSystem(ctx, orderId, 'Заявка добавлена в очередь экспертов')
     return orderId
   },
 })
@@ -122,6 +122,46 @@ export const listByStatus = query({
         .collect()
     }
     return q.order('desc').take(200)
+  },
+})
+
+/**
+ * Admin listing of every order with denormalised category title + customer +
+ * executor names so the moderation table can render without fan-out queries
+ * on the client. Limited to the most recent 500 — moderation scale.
+ */
+export const adminListAll = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx)
+    const orders = await ctx.db.query('orders').order('desc').take(500)
+    return Promise.all(
+      orders.map(async (o) => {
+        const category = await ctx.db.get(o.categoryId)
+        const customer = await ctx.db.get(o.customerId)
+        const executor = o.assignedExecutorId ? await ctx.db.get(o.assignedExecutorId) : null
+        return {
+          ...o,
+          categoryTitle: category?.title ?? null,
+          customer: customer
+            ? {
+                _id: customer._id,
+                name: customer.name,
+                telegramUsername: customer.telegramUsername,
+                image: customer.image,
+              }
+            : null,
+          executor: executor
+            ? {
+                _id: executor._id,
+                name: executor.name,
+                telegramUsername: executor.telegramUsername,
+                image: executor.image,
+              }
+            : null,
+        }
+      }),
+    )
   },
 })
 
@@ -246,6 +286,9 @@ export const assignExecutor = mutation({
 
 // ── Executor ────────────────────────────────────────────────────────────────
 
+/** Active statuses where the order is "in flight" for the executor. */
+const EXECUTOR_ACTIVE_STATUSES: Doc<'orders'>['status'][] = ['assigned', 'in_progress', 'answered']
+
 export const assignedToMe = query({
   args: {},
   handler: async (ctx) => {
@@ -256,6 +299,115 @@ export const assignedToMe = query({
       .order('desc')
       .collect()
     return orders.map((o) => anonymize(o, 'executor'))
+  },
+})
+
+/**
+ * Every still-claimable order matching the caller's categoryIds — the
+ * executor's "выберите заявку" pool. "Claimable" means any pre-completion,
+ * not-yet-assigned status: `submitted`, `priced`, `awaiting_payment`,
+ * `payment_expired`, `paid`. The admin pricing / payment path still works,
+ * but it's no longer a precondition — a freshly submitted order is
+ * immediately visible to a qualified expert.
+ *
+ * Ordered oldest-first so the queue is fair: the order that waited the
+ * longest is the easiest to take. The caller's own orders are excluded —
+ * a person can't pick up their own заявка, and surfacing it would let them
+ * see both sides of the anonymised chat.
+ *
+ * Returns an empty list when the caller isn't an approved executor (rather
+ * than throwing — the cabinet shell already gates the route, this query is
+ * meant to be safe to skip).
+ */
+export const availableForExecutor = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getUser(ctx)
+    if (!user) return []
+    const profile = await ctx.db
+      .query('executorProfiles')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .unique()
+    if (!profile || profile.status !== 'approved') return []
+
+    const buckets = await Promise.all(
+      CLAIMABLE_STATUSES.map((status) =>
+        ctx.db
+          .query('orders')
+          .withIndex('by_status', (q) => q.eq('status', status))
+          .collect(),
+      ),
+    )
+    const all = buckets.flat()
+    return all
+      .filter((o) => o.customerId !== user._id && profile.categoryIds.includes(o.categoryId))
+      .sort((a, b) => a.createdAt - b.createdAt)
+      .map((o) => anonymize(o, 'executor'))
+  },
+})
+
+/**
+ * Executor self-claim: atomically moves `paid → assigned` if the caller is
+ * approved, qualified for the category, and currently has no other order
+ * still in flight. Surfaces typed errors so the cabinet UI can render the
+ * right hint instead of a generic toast.
+ */
+export const claim = mutation({
+  args: { orderId: v.id('orders') },
+  handler: async (ctx, { orderId }) => {
+    const { user, profile } = await requireExecutor(ctx)
+    const order = await ctx.db.get(orderId)
+    if (!order) throw new ConvexError({ code: 'NOT_FOUND', message: 'Заявка не найдена' })
+
+    if (!CLAIMABLE_STATUSES.includes(order.status)) {
+      throw new ConvexError({
+        code: 'BAD_STATUS',
+        message: 'Заявку уже взяли в работу или она закрыта',
+      })
+    }
+    if (order.customerId === user._id) {
+      throw new ConvexError({
+        code: 'OWN_ORDER',
+        message: 'Это ваша заявка — её должен принять другой эксперт',
+      })
+    }
+    if (!profile.categoryIds.includes(order.categoryId)) {
+      throw new ConvexError({
+        code: 'BAD_CATEGORY',
+        message: 'Заявка не из ваших тематик — отредактируйте анкету или выберите другую',
+      })
+    }
+
+    // One active order at a time — finish what you started before taking more.
+    const assignedToMe = await ctx.db
+      .query('orders')
+      .withIndex('by_executor', (q) => q.eq('assignedExecutorId', user._id))
+      .collect()
+    const hasActive = assignedToMe.some((o) => EXECUTOR_ACTIVE_STATUSES.includes(o.status))
+    if (hasActive) {
+      throw new ConvexError({
+        code: 'BUSY',
+        message: 'У вас уже есть активная заявка — завершите её, прежде чем брать новую',
+      })
+    }
+
+    // If admin hadn't already locked in a custom price, lock the category's
+    // base price now — `complete` accrual reads `approvedPrice`, so it must
+    // be set by the time work starts.
+    const patch: {
+      assignedExecutorId: typeof user._id
+      assignedAt: number
+      approvedPrice?: number
+    } = {
+      assignedExecutorId: user._id,
+      assignedAt: Date.now(),
+    }
+    if (order.approvedPrice === undefined) {
+      patch.approvedPrice = order.quotedPrice
+    }
+
+    await transition(ctx, order, 'assigned', patch)
+    await postSystem(ctx, orderId, 'Эксперт взял заявку в работу')
   },
 })
 

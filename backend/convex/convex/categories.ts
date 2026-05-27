@@ -71,6 +71,32 @@ export const listAll = query({
   },
 })
 
+/**
+ * Admin listing joined with tag counts. Computed on read by walking the
+ * `by_category` index — cheap at moderation scale and avoids maintaining a
+ * counter column on every tag write.
+ */
+export const adminListAll = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx)
+    const categories = await ctx.db.query('categories').collect()
+    return Promise.all(
+      categories.map(async (cat) => {
+        const tags = await ctx.db
+          .query('tags')
+          .withIndex('by_category', (q) => q.eq('categoryId', cat._id))
+          .collect()
+        return {
+          ...cat,
+          tagCount: tags.length,
+          activeTagCount: tags.filter((t) => t.isActive).length,
+        }
+      }),
+    )
+  },
+})
+
 export const create = mutation({
   args: {
     title: v.string(),

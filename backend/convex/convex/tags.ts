@@ -4,9 +4,9 @@ import { mutation, query } from './_generated/server'
 import { requireAdmin, requireUser } from './lib/auth'
 
 // Tags are the specific topics inside a category (e.g. "Камеральная налоговая
-// проверка" inside "Налоговые проверки"). Customers pick a tag in the new-
-// question form so the admin/executor get a precise topic + matching
-// specialistCode for routing.
+// проверка" inside "Налоговые проверки"). Customers pick a tag in the
+// new-question form so the admin and the executor know the precise topic;
+// routing decisions now flow through the executor's own `categoryIds`.
 
 const clientTypeArg = v.union(
   v.literal('legal_entity_ie'),
@@ -51,9 +51,7 @@ export const get = query({
 
 export const create = mutation({
   args: {
-    code: v.string(),
     name: v.string(),
-    specialistCode: v.optional(v.string()),
     categoryId: v.id('categories'),
     clientTypes: v.array(clientTypeArg),
     sortOrder: v.number(),
@@ -61,12 +59,14 @@ export const create = mutation({
   },
   handler: async (ctx, input) => {
     await requireAdmin(ctx)
+    // Tags are unique by name within a single category — that's what the
+    // catalogue editor exposes, and what the seed key uses too.
     const existing = await ctx.db
       .query('tags')
-      .withIndex('by_code', (q) => q.eq('code', input.code))
-      .unique()
-    if (existing) {
-      throw new ConvexError({ code: 'DUPLICATE', message: `Тег ${input.code} уже существует` })
+      .withIndex('by_category', (q) => q.eq('categoryId', input.categoryId))
+      .collect()
+    if (existing.some((t) => t.name === input.name)) {
+      throw new ConvexError({ code: 'DUPLICATE', message: `Тег «${input.name}» уже существует` })
     }
     const now = Date.now()
     return ctx.db.insert('tags', { ...input, createdAt: now, updatedAt: now })

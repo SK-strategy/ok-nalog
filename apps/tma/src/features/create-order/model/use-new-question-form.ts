@@ -8,12 +8,11 @@ import type { ClientType } from '@tax-assistant/validators'
 import { MAX_ATTACHMENTS } from '@tax-assistant/validators'
 
 import type { Doc, Id } from '~/shared/api'
+import type { UploadedFile } from '~/shared/lib/use-upload'
 import { api } from '~/shared/api'
+import { useUpload, validateFile } from '~/shared/lib/use-upload'
 
-import type { UploadedFile } from '../lib/use-upload'
 import { useDebouncedEffect } from '../lib/use-debounced-effect'
-import { useUpload } from '../lib/use-upload'
-import { MAX_FILE_SIZE_BYTES } from '../ui/attachment-list'
 
 type Category = Doc<'categories'>
 
@@ -166,14 +165,17 @@ export function useNewQuestionForm({
       const slots = MAX_ATTACHMENTS - files.length
       const incoming = Array.from(list).slice(0, slots)
       const accepted: UploadedFile[] = []
+      let lastReject: string | null = null
       for (const f of incoming) {
-        if (f.size > MAX_FILE_SIZE_BYTES) {
-          setLocalUploadError(`Файл «${f.name}» больше 10 МБ`)
+        const check = validateFile(f)
+        if (!check.ok) {
+          lastReject = check.reason
           continue
         }
         const uploaded = await upload(f)
         if (uploaded) accepted.push(uploaded)
       }
+      if (lastReject) setLocalUploadError(lastReject)
       if (accepted.length > 0) setFiles((prev) => [...prev, ...accepted])
     },
     [files.length, upload],

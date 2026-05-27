@@ -7,10 +7,10 @@ import { CATEGORIES_SEED, TAGS_SEED } from './seedData'
 
 // Idempotent seed for the catalogue. Run from the CLI:
 //   `pnpm -F @tax-assistant/convex with-env convex run seed:run`
-// Each upsert is keyed by `code`, so re-running patches existing rows
-// instead of producing duplicates. Convex `convex run` already requires the
-// deployment admin key, so this mutation has no in-app auth check — running
-// it is privileged at the CLI layer.
+// Categories upsert by their `code`; tags upsert by `(categoryId, name)`
+// since tags no longer carry a stable code. Convex `convex run` already
+// requires the deployment admin key, so this mutation has no in-app auth
+// check — running it is privileged at the CLI layer.
 
 export const run = mutation({
   args: {},
@@ -55,23 +55,25 @@ export const run = mutation({
     let tagsCreated = 0
     let tagsUpdated = 0
     let tagsSkipped = 0
-    for (const tag of TAGS_SEED) {
+    for (let i = 0; i < TAGS_SEED.length; i++) {
+      const tag = TAGS_SEED[i]!
       const categoryId = categoryByCode.get(tag.categoryCode)
       if (!categoryId) {
         tagsSkipped++
         continue
       }
-      const existing = await ctx.db
+      // Dedup by name within the category — that's the only stable handle
+      // left now that tags no longer have a `code`.
+      const inCategory = await ctx.db
         .query('tags')
-        .withIndex('by_code', (q) => q.eq('code', tag.code))
-        .unique()
+        .withIndex('by_category', (q) => q.eq('categoryId', categoryId))
+        .collect()
+      const existing = inCategory.find((t) => t.name === tag.name) ?? null
       const patch: Omit<Doc<'tags'>, '_id' | '_creationTime' | 'createdAt'> = {
-        code: tag.code,
         name: tag.name,
-        specialistCode: tag.specialistCode ?? undefined,
         categoryId,
         clientTypes: tag.clientTypes,
-        sortOrder: TAGS_SEED.indexOf(tag),
+        sortOrder: i,
         isActive: true,
         updatedAt: now,
       }

@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
-import { Geist } from 'next/font/google'
+import { Manrope } from 'next/font/google'
 
 import { cn } from '@tax-assistant/ui'
 
 import { Providers } from '~/app/providers'
+import { AdminShell } from '~/widgets/admin-shell'
 
 import '~/app/styles.css'
 
@@ -12,18 +13,24 @@ export const metadata: Metadata = {
   description: 'Панель администратора',
 }
 
-const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
+const manrope = Manrope({
+  subsets: ['latin', 'cyrillic'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-sans-app',
+})
 
 export default function RootLayout(props: { children: React.ReactNode }) {
   return (
     <html lang="ru" suppressHydrationWarning>
       <body
         className={cn(
-          'bg-background text-foreground min-h-screen font-sans antialiased',
-          geistSans.variable,
+          'bg-background text-foreground min-h-dvh font-sans antialiased',
+          manrope.variable,
         )}
       >
-        <Providers>{props.children}</Providers>
+        <Providers>
+          <AdminShell>{props.children}</AdminShell>
+        </Providers>
       </body>
     </html>
   )

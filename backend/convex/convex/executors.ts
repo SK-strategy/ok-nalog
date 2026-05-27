@@ -1,4 +1,4 @@
-import { v } from 'convex/values'
+import { ConvexError, v } from 'convex/values'
 
 import { mutation, query } from './_generated/server'
 import { requireAdmin, requireUser } from './lib/auth'
@@ -149,5 +149,99 @@ export const payout = mutation({
       createdAt: now,
     })
     await ctx.db.patch(profileId, { balance: 0, updatedAt: now })
+  },
+})
+
+// ── Admin: listings + detail used by the new admin UI ───────────────────────
+
+/**
+ * All executor profiles joined with their domain user row + assignment counts.
+ * Used by the admin's `/executors` page to populate a sortable table.
+ */
+export const adminListAll = query({
+  args: {
+    status: v.optional(v.union(v.literal('pending'), v.literal('approved'), v.literal('rejected'))),
+  },
+  handler: async (ctx, { status }) => {
+    await requireAdmin(ctx)
+    const profiles = status
+      ? await ctx.db
+          .query('executorProfiles')
+          .withIndex('by_status', (q) => q.eq('status', status))
+          .order('desc')
+          .collect()
+      : await ctx.db.query('executorProfiles').order('desc').collect()
+
+    return Promise.all(
+      profiles.map(async (profile) => {
+        const user = await ctx.db.get(profile.userId)
+        const assigned = await ctx.db
+          .query('orders')
+          .withIndex('by_executor', (q) => q.eq('assignedExecutorId', profile.userId))
+          .collect()
+        return {
+          ...profile,
+          user,
+          assignedOrderCount: assigned.length,
+          completedOrderCount: assigned.filter((o) => o.status === 'completed').length,
+          activeOrderCount: assigned.filter(
+            (o) => o.status === 'assigned' || o.status === 'in_progress' || o.status === 'answered',
+          ).length,
+        }
+      }),
+    )
+  },
+})
+
+/** Number of profiles awaiting review — for the sidebar badge. */
+export const pendingCount = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx)
+    const rows = await ctx.db
+      .query('executorProfiles')
+      .withIndex('by_status', (q) => q.eq('status', 'pending'))
+      .collect()
+    return rows.length
+  },
+})
+
+/**
+ * Single executor detail: profile + user + categories they cover + recent
+ * transactions + every order ever assigned to them (admin only).
+ */
+export const adminGet = query({
+  args: { profileId: v.id('executorProfiles') },
+  handler: async (ctx, { profileId }) => {
+    await requireAdmin(ctx)
+    const profile = await ctx.db.get(profileId)
+    if (!profile) {
+      throw new ConvexError({ code: 'NOT_FOUND', message: 'Анкета не найдена' })
+    }
+    const user = await ctx.db.get(profile.userId)
+    const categories = await Promise.all(profile.categoryIds.map((id) => ctx.db.get(id)))
+    const transactions = await ctx.db
+      .query('transactions')
+      .withIndex('by_executor', (q) => q.eq('executorProfileId', profile._id))
+      .order('desc')
+      .take(50)
+    const orders = await ctx.db
+      .query('orders')
+      .withIndex('by_executor', (q) => q.eq('assignedExecutorId', profile.userId))
+      .order('desc')
+      .collect()
+    const orderRows = await Promise.all(
+      orders.map(async (o) => {
+        const category = await ctx.db.get(o.categoryId)
+        return { ...o, categoryTitle: category?.title ?? null }
+      }),
+    )
+    return {
+      profile,
+      user,
+      categories: categories.filter((c): c is NonNullable<typeof c> => c !== null),
+      transactions,
+      orders: orderRows,
+    }
   },
 })

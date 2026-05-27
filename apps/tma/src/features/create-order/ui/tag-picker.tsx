@@ -39,10 +39,7 @@ export function TagPicker({
     if (!tags) return []
     const q = query.trim().toLowerCase()
     if (!q) return tags
-    return tags.filter(
-      (t) =>
-        t.name.toLowerCase().includes(q) || (t.specialistCode?.toLowerCase().includes(q) ?? false),
-    )
+    return tags.filter((t) => t.name.toLowerCase().includes(q))
   }, [tags, query])
 
   const inert = Boolean(loading) || Boolean(disabled)
@@ -62,16 +59,9 @@ export function TagPicker({
       >
         <div className="min-w-0 flex-1">
           {selected ? (
-            <>
-              <div className="text-foreground truncate text-[15px] font-semibold">
-                {selected.name}
-              </div>
-              {selected.specialistCode && (
-                <div className="text-hint mt-0.5 truncate text-[12px]">
-                  {selected.specialistCode}
-                </div>
-              )}
-            </>
+            <div className="text-foreground truncate text-[15px] font-semibold">
+              {selected.name}
+            </div>
           ) : (
             <span className="text-hint text-[15px]">{loading ? 'Загрузка…' : placeholder}</span>
           )}
@@ -119,9 +109,6 @@ export function TagPicker({
                     <div className="text-foreground text-[15px] leading-snug font-medium">
                       {t.name}
                     </div>
-                    {t.specialistCode && (
-                      <div className="text-hint mt-0.5 text-[12px]">{t.specialistCode}</div>
-                    )}
                   </div>
                   {value === t._id && (
                     <Check className="text-primary size-[18px] shrink-0 translate-y-0.5" />

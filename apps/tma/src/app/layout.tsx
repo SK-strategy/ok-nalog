@@ -32,14 +32,20 @@ const manrope = Manrope({
 
 export default function RootLayout(props: { children: React.ReactNode }) {
   return (
-    <html lang="ru" suppressHydrationWarning>
+    // `h-full` on html + body propagates the actual rendered container size
+    // (whatever Telegram's WebView / panel / iframe gives us) down the tree.
+    // `dvh` resolves to the OS viewport, which on desktop Telegram is the
+    // whole window — larger than the panel the TMA actually lives in, so a
+    // `min-h-dvh` outer would exceed the panel and force page-level scroll.
+    // Percentage heights inherit the parent's real size and avoid that.
+    <html lang="ru" suppressHydrationWarning className="h-full">
       <head>
         {/* Telegram injects window.Telegram.WebApp once this loads. */}
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
       </head>
       <body
         className={cn(
-          'bg-background text-foreground min-h-screen font-sans antialiased',
+          'bg-background text-foreground h-full font-sans antialiased',
           manrope.variable,
         )}
       >
