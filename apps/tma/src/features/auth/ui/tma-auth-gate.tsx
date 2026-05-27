@@ -38,6 +38,8 @@ export function TmaAuthGate({ children }: { children: React.ReactNode }) {
   const [signingIn, setSigningIn] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  console.log({me, isAuthenticated, attempted})
+
   useEffect(() => {
     if (attempted.current || isAuthenticated) return
     attempted.current = true

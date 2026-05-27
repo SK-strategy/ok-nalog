@@ -130,7 +130,10 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>): BetterAuthOptions
   const oidcClientSecret = process.env.TELEGRAM_OIDC_CLIENT_SECRET
 
   return {
-    baseURL: process.env.CONVEX_SITE_ORIGIN,
+    // CONVEX_SITE_URL is auto-injected by the Convex runtime (it tracks the
+    // backend's CONVEX_SITE_ORIGIN config). Using it directly avoids having
+    // to mirror the same value into a manually-set deployment env var.
+    baseURL: process.env.CONVEX_SITE_URL,
     trustedOrigins: [
       process.env.WEB_ORIGIN ?? 'http://127.0.0.1:3100',
       process.env.ADMIN_ORIGIN ?? 'http://127.0.0.1:3101',
