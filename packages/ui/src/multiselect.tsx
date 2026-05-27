@@ -5,7 +5,7 @@ import { useEffect } from 'react'
 import { Command as CommandPrimitive, useCommandState } from 'cmdk'
 import { XIcon } from 'lucide-react'
 
-import { cn } from '@fedor/ui'
+import { cn } from '@tax-assistant/ui'
 
 import { Command, CommandGroup, CommandItem, CommandList } from './command'
 

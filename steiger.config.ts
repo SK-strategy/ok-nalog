@@ -8,4 +8,15 @@ import { defineConfig } from 'steiger'
 //
 // Full rule list: https://github.com/feature-sliced/steiger
 // Project conventions: AGENTS.md
-export default defineConfig([...fsd.configs.recommended])
+export default defineConfig([
+  ...fsd.configs.recommended,
+  {
+    // Advisory rule: flags slices referenced by <2 other slices. In these
+    // page-oriented apps a feature/entity consumed by exactly one view is
+    // intentional, so this rule is pure noise. Structural rules (layer order,
+    // public-api, forbidden-imports) stay enforced.
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
+])

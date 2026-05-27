@@ -1,5 +1,5 @@
 {
-  "name": "@fedor/validators",
+  "name": "@tax-assistant/validators",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -17,14 +17,14 @@
     "lint": "eslint --flag unstable_native_nodejs_ts_config",
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
-  "prettier": "@fedor/prettier-config",
+  "prettier": "@tax-assistant/prettier-config",
   "dependencies": {
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@fedor/eslint-config": "workspace:*",
-    "@fedor/prettier-config": "workspace:*",
-    "@fedor/tsconfig": "workspace:*",
+    "@tax-assistant/eslint-config": "workspace:*",
+    "@tax-assistant/prettier-config": "workspace:*",
+    "@tax-assistant/tsconfig": "workspace:*",
     "eslint": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:"

@@ -1,8 +1,7 @@
-import { z } from 'zod/v4'
-
-export const unused = z.string().describe(
-  `This lib is currently not used as we use drizzle-zod for simple schemas
-   But as your application grows and you need other validators to share
-   with back and frontend, you can put them in here
-  `,
-)
+// Shared domain layer — enums, money, the order state machine, and input
+// schemas reused by all apps and Convex arg validation.
+export * from './enums'
+export * from './constants'
+export * from './money'
+export * from './order-status'
+export * from './schemas'

@@ -4,7 +4,7 @@ import type { FC } from 'react'
 import * as React from 'react'
 import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 
-import { cn } from '@fedor/ui'
+import { cn } from '@tax-assistant/ui'
 
 const TooltipProvider = TooltipPrimitive.Provider
 

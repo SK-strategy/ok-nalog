@@ -1,5 +1,5 @@
 {
-  "name": "fedor",
+  "name": "tax-assistant",
   "private": true,
   "engines": {
     "node": "^22.21.0",
@@ -12,21 +12,21 @@
     "clean": "git clean -xdf node_modules",
     "clean:workspaces": "turbo run clean",
     "dev": "turbo watch dev --continue",
-    "dev:web": "turbo watch dev -F @fedor/web...",
+    "dev:web": "turbo watch dev -F @tax-assistant/web...",
     "format": "turbo run format --continue -- --cache --cache-location .cache/.prettiercache",
     "format:fix": "turbo run format --continue -- --write --cache --cache-location .cache/.prettiercache",
     "lint": "turbo run lint --continue -- --cache --cache-location .cache/.eslintcache",
     "lint:fix": "turbo run lint --continue -- --fix --cache --cache-location .cache/.eslintcache",
-    "lint:fsd": "steiger ./apps/web/src",
+    "lint:fsd": "steiger ./apps/web/src && steiger ./apps/admin/src && steiger ./apps/tma/src",
     "lint:ws": "pnpm dlx sherif@latest",
     "postinstall": "pnpm lint:ws",
     "typecheck": "turbo run typecheck",
     "ui-add": "turbo run ui-add"
   },
-  "prettier": "@fedor/prettier-config",
+  "prettier": "@tax-assistant/prettier-config",
   "devDependencies": {
     "@feature-sliced/steiger-plugin": "^0.5.4",
-    "@fedor/prettier-config": "workspace:*",
+    "@tax-assistant/prettier-config": "workspace:*",
     "@turbo/gen": "^2.5.8",
     "dotenv-cli": "^10.0.0",
     "prettier": "catalog:",

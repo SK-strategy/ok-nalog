@@ -1,7 +1,7 @@
 import { defineConfig } from 'eslint/config'
 
-import { baseConfig } from '@fedor/eslint-config/base'
-import { reactConfig } from '@fedor/eslint-config/react'
+import { baseConfig } from '@tax-assistant/eslint-config/base'
+import { reactConfig } from '@tax-assistant/eslint-config/react'
 
 export default defineConfig(
   {

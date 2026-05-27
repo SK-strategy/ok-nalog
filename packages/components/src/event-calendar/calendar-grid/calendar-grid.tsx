@@ -3,7 +3,7 @@
 import type { Locale } from 'date-fns'
 import type { ReactNode } from 'react'
 
-import { cn } from '@fedor/ui'
+import { cn } from '@tax-assistant/ui'
 
 import type { CalendarDay as CalendarDayType } from '../types'
 import { useCalendarContext } from '../calendar'

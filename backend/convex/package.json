@@ -1,5 +1,5 @@
 {
-  "name": "@fedor/convex",
+  "name": "@tax-assistant/convex",
   "private": true,
   "type": "module",
   "exports": {
@@ -15,14 +15,19 @@
     "typecheck": "tsc --noEmit",
     "with-env": "dotenv -e ../../.env --"
   },
-  "prettier": "@fedor/prettier-config",
+  "prettier": "@tax-assistant/prettier-config",
   "dependencies": {
+    "@convex-dev/better-auth": "^0.12.2",
+    "@tax-assistant/validators": "workspace:*",
+    "better-auth": "catalog:",
+    "better-auth-telegram": "^1.5.0",
     "convex": "catalog:"
   },
   "devDependencies": {
-    "@fedor/eslint-config": "workspace:*",
-    "@fedor/prettier-config": "workspace:*",
-    "@fedor/tsconfig": "workspace:*",
+    "@better-auth/cli": "catalog:",
+    "@tax-assistant/eslint-config": "workspace:*",
+    "@tax-assistant/prettier-config": "workspace:*",
+    "@tax-assistant/tsconfig": "workspace:*",
     "dotenv-cli": "^10.0.0",
     "eslint": "catalog:",
     "prettier": "catalog:",

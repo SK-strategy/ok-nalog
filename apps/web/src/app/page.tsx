@@ -1,3 +1,3 @@
-import { HomePage } from '~/views/home'
+import { MarketingPage } from '~/views/marketing'
 
-export default HomePage
+export default MarketingPage

@@ -1,8 +1,8 @@
 import { defineConfig } from 'eslint/config'
 
-import { baseConfig, restrictEnvAccess } from '@fedor/eslint-config/base'
-import { nextjsConfig } from '@fedor/eslint-config/nextjs'
-import { reactConfig } from '@fedor/eslint-config/react'
+import { baseConfig, restrictEnvAccess } from '@tax-assistant/eslint-config/base'
+import { nextjsConfig } from '@tax-assistant/eslint-config/nextjs'
+import { reactConfig } from '@tax-assistant/eslint-config/react'
 
 export default defineConfig(
   {

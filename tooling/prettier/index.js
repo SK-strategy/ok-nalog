@@ -32,7 +32,7 @@ const config = {
   // `tailwindStylesheet` is intentionally omitted — the plugin resolves it
   // relative to CWD (not the config file), so a single shared value can't
   // point at the right path across the monorepo. Each app's CSS imports
-  // `@fedor/tailwind-config/theme`, which the plugin picks up via
+  // `@tax-assistant/tailwind-config/theme`, which the plugin picks up via
   // auto-detection.
   tailwindFunctions: ['cn', 'cva', 'cx', 'tw', 'clsx'],
   tailwindAttributes: ['className', 'class'],
@@ -47,7 +47,7 @@ const config = {
   // Import order, top-to-bottom:
   //   1. type-only imports (collected at the top)
   //   2. react / next / third-party
-  //   3. workspace packages (@fedor/*)
+  //   3. workspace packages (@tax-assistant/*)
   //   4. FSD layers, top-down (app → views → widgets → features → entities → shared)
   //   5. relative imports
   importOrder: [
@@ -56,8 +56,8 @@ const config = {
     '^(next/(.*)$)|^(next$)',
     '<THIRD_PARTY_MODULES>',
     '',
-    '<TYPES>^@fedor',
-    '^@fedor/(.*)$',
+    '<TYPES>^@tax-assistant',
+    '^@tax-assistant/(.*)$',
     '',
     '<TYPES>^~/app',
     '^~/app(/.*)?$',

@@ -4,7 +4,7 @@ import type { ComponentPropsWithRef, ReactNode } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { format } from 'date-fns'
 
-import { cn } from '@fedor/ui'
+import { cn } from '@tax-assistant/ui'
 
 import type { CalendarDay as CalendarDayType } from '../types'
 

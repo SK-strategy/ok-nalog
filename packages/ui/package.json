@@ -1,5 +1,5 @@
 {
-  "name": "@fedor/ui",
+  "name": "@tax-assistant/ui",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -42,7 +42,7 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false",
     "ui-add": "pnpm dlx shadcn@latest add && prettier src --write --list-different"
   },
-  "prettier": "@fedor/prettier-config",
+  "prettier": "@tax-assistant/prettier-config",
   "dependencies": {
     "@internationalized/date": "^3.10.0",
     "@radix-ui/react-avatar": "^1.1.10",
@@ -65,9 +65,9 @@
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
-    "@fedor/eslint-config": "workspace:*",
-    "@fedor/prettier-config": "workspace:*",
-    "@fedor/tsconfig": "workspace:*",
+    "@tax-assistant/eslint-config": "workspace:*",
+    "@tax-assistant/prettier-config": "workspace:*",
+    "@tax-assistant/tsconfig": "workspace:*",
     "@types/react": "catalog:react19",
     "eslint": "catalog:",
     "prettier": "catalog:",

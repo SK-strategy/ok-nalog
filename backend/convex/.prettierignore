@@ -3,3 +3,5 @@
 # regenerates on every schema/function change. Letting Prettier fight it
 # would create an unfixable churn loop.
 convex/_generated/
+# Same story for component-local codegen output (Local Install path).
+convex/betterAuth/_generated/

@@ -5,23 +5,23 @@ before editing code.
 
 ## Project overview
 
-`fedor` is a Turborepo + pnpm monorepo. One Next.js app today, designed to
-grow. All workspace packages share the `@fedor/*` scope.
+`tax-assistant` is a Turborepo + pnpm monorepo. One Next.js app today, designed to
+grow. All workspace packages share the `@tax-assistant/*` scope.
 
 ```
 apps/
   web/               # Main Next.js application (FSD inside)
 backend/
-  convex/            # @fedor/convex — Convex backend (schema + functions)
+  convex/            # @tax-assistant/convex — Convex backend (schema + functions)
 packages/
-  components/        # @fedor/components — branded compositions on top of @fedor/ui (event-calendar, …)
-  ui/                # @fedor/ui — shadcn-based primitives
+  components/        # @tax-assistant/components — branded compositions on top of @tax-assistant/ui (event-calendar, …)
+  ui/                # @tax-assistant/ui — shadcn-based primitives
   validators/        # Shared Zod schemas
 tooling/
-  eslint/            # @fedor/eslint-config (flat config)
-  prettier/          # @fedor/prettier-config
-  tailwind/          # @fedor/tailwind-config (CSS-first Tailwind v4)
-  typescript/        # @fedor/tsconfig (base + compiled-package)
+  eslint/            # @tax-assistant/eslint-config (flat config)
+  prettier/          # @tax-assistant/prettier-config
+  tailwind/          # @tax-assistant/tailwind-config (CSS-first Tailwind v4)
+  typescript/        # @tax-assistant/tsconfig (base + compiled-package)
   github/            # CI workflows
 turbo/               # turbo generators (used by `pnpm ui-add`, etc.)
 ```
@@ -30,8 +30,8 @@ turbo/               # turbo generators (used by `pnpm ui-add`, etc.)
 
 - **Runtime**: Node ≥ 22.21, pnpm ≥ 10.19
 - **App framework**: Next.js 16 (App Router) + React 19
-- **Backend**: Convex (self-hosted, Postgres-backed) via `@fedor/convex`
-- **Styling**: Tailwind CSS v4 (CSS-first, theme via `@fedor/tailwind-config`)
+- **Backend**: Convex (self-hosted, Postgres-backed) via `@tax-assistant/convex`
+- **Styling**: Tailwind CSS v4 (CSS-first, theme via `@tax-assistant/tailwind-config`)
 - **Validation**: Zod 4
 - **Quality**: ESLint 9 (flat config) + Prettier 3 + Steiger (FSD linter)
 - **Type system**: TypeScript 5.9 (strict)
@@ -140,7 +140,7 @@ builders by both the sort and wrap plugins.
 
 ### ESLint
 
-- Base: `@fedor/eslint-config/base` (typescript-eslint with type-checking).
+- Base: `@tax-assistant/eslint-config/base` (typescript-eslint with type-checking).
 - Composed configs: `/nextjs`, `/react`.
 - `eslint-plugin-prettier/recommended` is loaded last so `eslint --fix`
   reformats with Prettier and any conflicting stylistic rules are off.
@@ -151,10 +151,10 @@ Config: [`steiger.config.ts`](./steiger.config.ts) at the repo root.
 Loads `@feature-sliced/steiger-plugin`'s recommended ruleset. Run via
 `pnpm lint:fsd`.
 
-## Convex (self-hosted) — `@fedor/convex`
+## Convex (self-hosted) — `@tax-assistant/convex`
 
 Backend lives in `backend/convex/convex/` (schema + functions). The web
-app consumes the generated `api` via `import { api } from '@fedor/convex'`.
+app consumes the generated `api` via `import { api } from '@tax-assistant/convex'`.
 
 ### One-time setup
 
@@ -170,7 +170,7 @@ app consumes the generated `api` via `import { api } from '@fedor/convex'`.
    ```
 4. Push the schema and functions to your local backend:
    ```sh
-   pnpm -F @fedor/convex dev
+   pnpm -F @tax-assistant/convex dev
    ```
    This regenerates `backend/convex/convex/_generated/` from your schema
    and watches for changes. Keep it running alongside `pnpm dev`.
@@ -179,17 +179,17 @@ app consumes the generated `api` via `import { api } from '@fedor/convex'`.
 
 | Service          | URL                       |
 |------------------|---------------------------|
-| Backend API      | `http://127.0.0.1:3210`   |
-| HTTP actions     | `http://127.0.0.1:3211`   |
-| Dashboard        | `http://127.0.0.1:6791`   |
-| Postgres         | `postgres://fedor:fedor@127.0.0.1:5432/fedor` |
+| Backend API      | `http://127.0.0.1:3310`   |
+| HTTP actions     | `http://127.0.0.1:3311`   |
+| Dashboard        | `http://127.0.0.1:6891`   |
+| Postgres         | `postgres://tax_assistant:tax_assistant@127.0.0.1:5532/tax_assistant` |
 
 ### Adding a function
 
 1. Edit/create a module under `backend/convex/convex/` (e.g.
    `posts.ts`).
 2. Export `query`/`mutation`/`action` from `./_generated/server`.
-3. `pnpm -F @fedor/convex dev` (or codegen) regenerates the typed
+3. `pnpm -F @tax-assistant/convex dev` (or codegen) regenerates the typed
    `api` re-export — consumers get autocomplete immediately.
 
 ### `_generated/` files
@@ -197,9 +197,9 @@ app consumes the generated `api` via `import { api } from '@fedor/convex'`.
 Committed to git so the workspace type-checks before anyone runs
 `convex dev`. They are overwritten on every codegen, so don't hand-edit.
 
-## Component structure (in `@fedor/components`)
+## Component structure (in `@tax-assistant/components`)
 
-`@fedor/components` is for **composed, multi-part components** — each lives
+`@tax-assistant/components` is for **composed, multi-part components** — each lives
 in its own directory under `src/`, with sub-components, hooks, types, and
 constants colocated. Pattern (see `src/event-calendar/` as the reference):
 
@@ -220,8 +220,8 @@ src/<component-name>/
 
 Rules:
 
-- **One barrel per slice.** Consumers import from `@fedor/components/<name>`
-  or `@fedor/components`. Never reach into a sub-directory.
+- **One barrel per slice.** Consumers import from `@tax-assistant/components/<name>`
+  or `@tax-assistant/components`. Never reach into a sub-directory.
 - **Sub-components are siblings, not children of the root file.** This
   keeps each piece reviewable in isolation and lets `useContext` flow
   through the root.
@@ -238,11 +238,11 @@ pattern as soon as a second file appears.
 ## Adding a new workspace package
 
 1. `mkdir -p packages/<name>/src` and add `package.json` with
-   `"name": "@fedor/<name>"`, `"type": "module"`, the relevant scripts,
-   and the appropriate `@fedor/{eslint-config,prettier-config,tsconfig}` dev
+   `"name": "@tax-assistant/<name>"`, `"type": "module"`, the relevant scripts,
+   and the appropriate `@tax-assistant/{eslint-config,prettier-config,tsconfig}` dev
    deps.
-2. Add `"prettier": "@fedor/prettier-config"` to the manifest.
-3. Add a `tsconfig.json` extending `@fedor/tsconfig/base.json` (apps) or
+2. Add `"prettier": "@tax-assistant/prettier-config"` to the manifest.
+3. Add a `tsconfig.json` extending `@tax-assistant/tsconfig/base.json` (apps) or
    `compiled-package.json` (libraries that emit types).
 4. Create `eslint.config.ts` exporting `defineConfig(baseConfig)` (plus
    `reactConfig`/`nextjsConfig`/`restrictEnvAccess` as needed).

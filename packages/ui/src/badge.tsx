@@ -2,7 +2,7 @@ import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
 import { cva } from 'class-variance-authority'
 
-import { cn } from '@fedor/ui'
+import { cn } from '@tax-assistant/ui'
 
 const badgeVariants = cva(
   `focus:ring-ring inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold

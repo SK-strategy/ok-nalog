@@ -1,7 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react'
 import { Fragment } from 'react'
 
-import { cn } from '@fedor/ui'
+import { cn } from '@tax-assistant/ui'
 
 const DefaultKbdSeparator = ({ className, children = '+', ...props }: ComponentProps<'span'>) => (
   <span className={cn('text-muted-foreground/50', className)} {...props}>

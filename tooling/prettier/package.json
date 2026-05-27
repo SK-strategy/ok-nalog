@@ -1,5 +1,5 @@
 {
-  "name": "@fedor/prettier-config",
+  "name": "@tax-assistant/prettier-config",
   "private": true,
   "type": "module",
   "exports": {
@@ -10,7 +10,7 @@
     "format": "prettier --check . --ignore-path ../../.gitignore",
     "typecheck": "tsc --noEmit"
   },
-  "prettier": "@fedor/prettier-config",
+  "prettier": "@tax-assistant/prettier-config",
   "dependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.7.0",
     "prettier": "catalog:",
@@ -20,7 +20,7 @@
     "prettier-plugin-tailwindcss": "^0.7.1"
   },
   "devDependencies": {
-    "@fedor/tsconfig": "workspace:*",
+    "@tax-assistant/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:"
   }

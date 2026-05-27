@@ -1,0 +1,21 @@
+# Caddy terminates TLS for the Convex backend so the HTTPS apps (3100/3101/3102)
+# can talk to it without browser mixed-content blocks. Uses the same mkcert
+# dev certificate the Next.js apps serve.
+{
+	auto_https off
+	admin off
+}
+
+# Convex Cloud API — websocket subscriptions + query/mutation HTTP.
+# Browser hits wss://192.168.31.81:3320 → terminated here → ws://convex-backend:3210.
+:3320 {
+	tls /certs/dev-cert.pem /certs/dev-key.pem
+	reverse_proxy convex-backend:3210
+}
+
+# Convex Site (HTTP actions) — hosts better-auth /api/auth/* including the
+# Telegram OIDC callback. BotFather's Redirect URL should target /api/auth/callback/telegram-oidc here.
+:3321 {
+	tls /certs/dev-cert.pem /certs/dev-key.pem
+	reverse_proxy convex-backend:3211
+}

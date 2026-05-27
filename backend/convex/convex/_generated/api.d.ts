@@ -8,7 +8,19 @@
  * @module
  */
 
-import type * as tasks from "../tasks.js";
+import type * as auth from "../auth.js";
+import type * as categories from "../categories.js";
+import type * as crons from "../crons.js";
+import type * as executors from "../executors.js";
+import type * as files from "../files.js";
+import type * as http from "../http.js";
+import type * as jwks from "../jwks.js";
+import type * as lib_auth from "../lib/auth.js";
+import type * as lib_ledger from "../lib/ledger.js";
+import type * as lib_orders from "../lib/orders.js";
+import type * as messages from "../messages.js";
+import type * as orders from "../orders.js";
+import type * as users from "../users.js";
 
 import type {
   ApiFromModules,
@@ -17,7 +29,19 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  tasks: typeof tasks;
+  auth: typeof auth;
+  categories: typeof categories;
+  crons: typeof crons;
+  executors: typeof executors;
+  files: typeof files;
+  http: typeof http;
+  jwks: typeof jwks;
+  "lib/auth": typeof lib_auth;
+  "lib/ledger": typeof lib_ledger;
+  "lib/orders": typeof lib_orders;
+  messages: typeof messages;
+  orders: typeof orders;
+  users: typeof users;
 }>;
 
 /**
@@ -46,4 +70,6 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: {
+  betterAuth: import("../betterAuth/_generated/component.js").ComponentApi<"betterAuth">;
+};

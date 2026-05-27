@@ -1,4 +1,4 @@
-import { cn } from '@fedor/ui'
+import { cn } from '@tax-assistant/ui'
 
 function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return <div className={cn('bg-muted animate-pulse rounded-md', className)} {...props} />

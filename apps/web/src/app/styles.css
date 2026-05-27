@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
-@import '@fedor/tailwind-config/theme';
+@import '@tax-assistant/tailwind-config/theme';
 
 @source '../../../../packages/ui/src/*.tsx';
 @source '../../../../packages/components/src/**/*.tsx';

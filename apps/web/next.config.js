@@ -8,7 +8,12 @@ await jiti.import('./src/env')
 /** @type {import("next").NextConfig} */
 const config = {
   /** Enables hot reloading for local packages without a build step */
-  transpilePackages: ['@fedor/components', '@fedor/convex', '@fedor/ui', '@fedor/validators'],
+  transpilePackages: [
+    '@tax-assistant/components',
+    '@tax-assistant/convex',
+    '@tax-assistant/ui',
+    '@tax-assistant/validators',
+  ],
 
   /** We already do linting and typechecking as separate tasks in CI */
   typescript: { ignoreBuildErrors: true },

@@ -3,7 +3,7 @@
 import { CheckIcon, ChevronRightIcon, DotFilledIcon } from '@radix-ui/react-icons'
 import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui'
 
-import { cn } from '@fedor/ui'
+import { cn } from '@tax-assistant/ui'
 
 export function DropdownMenu({
   ...props

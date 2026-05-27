@@ -3,7 +3,7 @@
   "extends": ["config:base"],
   "packageRules": [
     {
-      "matchPackagePatterns": ["^@fedor/"],
+      "matchPackagePatterns": ["^@tax-assistant/"],
       "enabled": false
     }
   ],

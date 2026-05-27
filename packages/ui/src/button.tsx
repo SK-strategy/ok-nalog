@@ -2,7 +2,7 @@ import type { VariantProps } from 'class-variance-authority'
 import { cva } from 'class-variance-authority'
 import { Slot as SlotPrimitive } from 'radix-ui'
 
-import { cn } from '@fedor/ui'
+import { cn } from '@tax-assistant/ui'
 
 export const buttonVariants = cva(
   `focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20

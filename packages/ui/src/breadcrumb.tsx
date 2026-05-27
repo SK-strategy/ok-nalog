@@ -2,7 +2,7 @@ import type * as React from 'react'
 import { ChevronRightIcon, DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { Slot } from '@radix-ui/react-slot'
 
-import { cn } from '@fedor/ui'
+import { cn } from '@tax-assistant/ui'
 
 function Breadcrumb({ ...props }: React.ComponentProps<'nav'>) {
   return <nav aria-label="breadcrumb" data-slot="breadcrumb" {...props} />

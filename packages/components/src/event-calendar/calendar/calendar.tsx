@@ -12,7 +12,7 @@ import {
   useSensors,
 } from '@dnd-kit/core'
 
-import { cn } from '@fedor/ui'
+import { cn } from '@tax-assistant/ui'
 
 import { EventGap, EventHeight } from '../constants'
 

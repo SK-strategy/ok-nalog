@@ -16,7 +16,7 @@ import {
   TimeField as TimeFieldRac,
 } from 'react-aria-components'
 
-import { cn } from '@fedor/ui'
+import { cn } from '@tax-assistant/ui'
 
 function DateField<T extends DateValueRac>({ className, children, ...props }: DateFieldProps<T>) {
   return (

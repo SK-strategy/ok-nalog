@@ -1,4 +1,4 @@
-# Local services for fedor. Bring up the whole stack with:
+# Local services for tax_assistant. Bring up the whole stack with:
 #     docker compose up -d
 #
 # After first start, grab the Convex admin key:
@@ -6,25 +6,27 @@
 # Then drop it into .env as CONVEX_SELF_HOSTED_ADMIN_KEY.
 #
 # Endpoints (host-side):
-#   - Convex backend       http://127.0.0.1:3210
-#   - Convex HTTP actions  http://127.0.0.1:3211
-#   - Convex dashboard     http://127.0.0.1:6791
-#   - Postgres             postgres://fedor:fedor@127.0.0.1:5432/fedor
+#   - Convex backend (HTTPS via Caddy)  https://192.168.31.81:3320  ← apps use this
+#   - Convex HTTP actions (HTTPS)       https://192.168.31.81:3321  ← OIDC callback lives here
+#   - Convex backend (HTTP direct)      http://127.0.0.1:3310       ← for CLI / debugging
+#   - Convex HTTP actions (HTTP direct) http://127.0.0.1:3311
+#   - Convex dashboard                  http://127.0.0.1:6891
+#   - Postgres                          postgres://tax_assistant:tax_assistant@127.0.0.1:5532/tax_assistant
 
 services:
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
     ports:
-      - '5432:5432'
+      - '5532:5432'
     environment:
-      POSTGRES_USER: fedor
-      POSTGRES_PASSWORD: fedor
-      POSTGRES_DB: fedor
+      POSTGRES_USER: tax_assistant
+      POSTGRES_PASSWORD: tax_assistant
+      POSTGRES_DB: tax_assistant
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U fedor -d fedor']
+      test: ['CMD-SHELL', 'pg_isready -U tax_assistant -d tax_assistant']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -35,15 +37,18 @@ services:
     stop_grace_period: 10s
     stop_signal: SIGINT
     ports:
-      - '3210:3210'
-      - '3211:3211'
+      - '3310:3210'
+      - '3311:3211'
     environment:
-      INSTANCE_NAME: ${INSTANCE_NAME:-fedor}
+      INSTANCE_NAME: ${INSTANCE_NAME:-tax_assistant}
       INSTANCE_SECRET: ${INSTANCE_SECRET:-}
-      CONVEX_CLOUD_ORIGIN: ${CONVEX_CLOUD_ORIGIN:-http://127.0.0.1:3210}
-      CONVEX_SITE_ORIGIN: ${CONVEX_SITE_ORIGIN:-http://127.0.0.1:3211}
+      # Public origins the backend itself uses when generating URLs.
+      # Point them at the Caddy HTTPS frontend so any URLs the backend
+      # emits work for browser clients on the HTTPS apps.
+      CONVEX_CLOUD_ORIGIN: ${CONVEX_CLOUD_ORIGIN:-https://192.168.31.81:3320}
+      CONVEX_SITE_ORIGIN: ${CONVEX_SITE_ORIGIN:-https://192.168.31.81:3321}
       # Point Convex at the self-hosted Postgres above (intra-container DNS).
-      POSTGRES_URL: postgres://fedor:fedor@postgres:5432
+      POSTGRES_URL: postgres://tax_assistant:tax_assistant@postgres:5432
       DO_NOT_REQUIRE_SSL: 'true'
       DISABLE_BEACON: ${DISABLE_BEACON:-true}
       REDACT_LOGS_TO_CLIENT: ${REDACT_LOGS_TO_CLIENT:-false}
@@ -59,9 +64,24 @@ services:
     stop_grace_period: 10s
     stop_signal: SIGINT
     ports:
-      - '6791:6791'
+      - '6891:6791'
     environment:
-      NEXT_PUBLIC_DEPLOYMENT_URL: ${CONVEX_SELF_HOSTED_URL:-http://127.0.0.1:3210}
+      NEXT_PUBLIC_DEPLOYMENT_URL: ${CONVEX_SELF_HOSTED_URL:-http://127.0.0.1:3310}
+    depends_on:
+      - convex-backend
+
+  # TLS-terminating reverse proxy in front of convex-backend. Mounts the
+  # mkcert dev cert (same one the Next.js apps serve) so apps, OIDC redirects,
+  # and Convex all live behind a single trusted certificate.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '3320:3320'
+      - '3321:3321'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/certs:ro
     depends_on:
       - convex-backend
 

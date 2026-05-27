@@ -1,5 +1,5 @@
 {
-  "name": "@fedor/tsconfig",
+  "name": "@tax-assistant/tsconfig",
   "private": true,
   "files": [
     "*.json"

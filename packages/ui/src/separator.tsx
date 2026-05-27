@@ -2,7 +2,7 @@
 
 import { Separator as SeparatorPrimitive } from 'radix-ui'
 
-import { cn } from '@fedor/ui'
+import { cn } from '@tax-assistant/ui'
 
 export function Separator({
   className,

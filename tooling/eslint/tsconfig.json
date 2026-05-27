@@ -1,5 +1,5 @@
 {
-  "extends": "@fedor/tsconfig/base.json",
+  "extends": "@tax-assistant/tsconfig/base.json",
   "include": ["."],
   "exclude": ["node_modules"]
 }

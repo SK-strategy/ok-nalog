@@ -1,5 +1,5 @@
 {
-  "extends": "@fedor/tsconfig/compiled-package.json",
+  "extends": "@tax-assistant/tsconfig/compiled-package.json",
   "include": ["src"],
   "exclude": ["node_modules"]
 }

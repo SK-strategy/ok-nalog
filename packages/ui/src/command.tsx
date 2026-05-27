@@ -4,7 +4,7 @@ import type * as React from 'react'
 import { Command as CommandPrimitive } from 'cmdk'
 import { SearchIcon } from 'lucide-react'
 
-import { cn } from '@fedor/ui'
+import { cn } from '@tax-assistant/ui'
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './dialog'
 

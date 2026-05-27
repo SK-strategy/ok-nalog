@@ -1,15 +1,16 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 
-import { cn } from '@fedor/ui'
+import { cn } from '@tax-assistant/ui'
 
-import { ConvexClientProvider } from '~/app/convex-provider'
+import { Providers } from '~/app/providers'
+import { SiteHeader } from '~/widgets/site-header'
 
 import '~/app/styles.css'
 
 export const metadata: Metadata = {
-  title: 'Fedor',
-  description: 'Fresh turborepo monorepo',
+  title: 'Налоговый помощник',
+  description: 'Консультации по налоговым вопросам с проверенными экспертами',
 }
 
 export const viewport: Viewport = {
@@ -38,7 +39,10 @@ export default function RootLayout(props: { children: React.ReactNode }) {
           geistMono.variable,
         )}
       >
-        <ConvexClientProvider>{props.children}</ConvexClientProvider>
+        <Providers>
+          <SiteHeader />
+          {props.children}
+        </Providers>
       </body>
     </html>
   )

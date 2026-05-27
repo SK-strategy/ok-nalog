@@ -1,1 +1,1 @@
-export { default } from '@fedor/tailwind-config/postcss-config'
+export { default } from '@tax-assistant/tailwind-config/postcss-config'

@@ -16,7 +16,7 @@ import {
   RangeCalendar as RangeCalendarRac,
 } from 'react-aria-components'
 
-import { cn } from '@fedor/ui'
+import { cn } from '@tax-assistant/ui'
 
 interface BaseCalendarProps {
   className?: string

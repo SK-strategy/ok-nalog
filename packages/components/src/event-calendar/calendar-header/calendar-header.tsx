@@ -4,8 +4,8 @@ import type { Locale } from 'date-fns'
 import { format, isSameMonth } from 'date-fns'
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 
-import { cn } from '@fedor/ui'
-import { Button } from '@fedor/ui/button'
+import { cn } from '@tax-assistant/ui'
+import { Button } from '@tax-assistant/ui/button'
 
 export interface CalendarHeaderProps {
   currentDate: Date

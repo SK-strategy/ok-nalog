@@ -1,6 +1,6 @@
 import type * as React from 'react'
 
-import { cn } from '@fedor/ui'
+import { cn } from '@tax-assistant/ui'
 
 function Card({ className, ...props }: React.ComponentProps<'div'>) {
   return (
