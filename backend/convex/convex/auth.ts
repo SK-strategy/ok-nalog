@@ -39,14 +39,6 @@ import schema from './betterAuth/schema'
 // at runtime will fail loudly via better-auth's own validation.
 const env = (key: string): string => process.env[key] ?? ''
 
-const adminTelegramIds = (): Set<string> =>
-  new Set(
-    (process.env.TELEGRAM_ADMIN_IDS ?? '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean),
-  )
-
 // Trigger callbacks run in the app's mutation context (with access to the
 // domain `ctx.db`), fired by the betterAuth component after it writes to its
 // own `user` table. Keep them idempotent — they retry on partial failures.
@@ -54,20 +46,46 @@ const triggers: Triggers<DataModel, typeof schema> = {
   user: {
     onCreate: async (ctx, doc) => {
       const telegramId = doc.telegramId ?? ''
-      const role = adminTelegramIds().has(telegramId) ? 'admin' : 'customer'
       const now = Date.now()
+
+      // Re-link instead of duplicating: if a domain user with this Telegram id
+      // already exists (from a previous sign-in via a different flow, or an
+      // older better-auth row), point it at the new authUserId and keep the
+      // role/profile state. The domain user is keyed by telegramId — the
+      // person, not the auth identity.
+      if (telegramId) {
+        const byTelegram = await ctx.db
+          .query('users')
+          .withIndex('by_telegram', (q) => q.eq('telegramId', telegramId))
+          .first()
+        if (byTelegram) {
+          await ctx.db.patch(byTelegram._id, {
+            authUserId: doc._id,
+            telegramUsername: doc.telegramUsername ?? byTelegram.telegramUsername,
+            name: doc.name || byTelegram.name,
+            image: doc.image ?? byTelegram.image,
+            updatedAt: now,
+          })
+          return
+        }
+      }
+
       const existing = await ctx.db
         .query('users')
         .withIndex('by_auth_user', (q) => q.eq('authUserId', doc._id))
         .unique()
       if (existing) return // already mirrored — defensive against retries
+
+      // New domain user — always starts as 'customer'. Promote to 'admin' or
+      // 'executor' by editing the `users.role` field directly in the Convex
+      // dashboard (or via an admin-only mutation once one exists).
       await ctx.db.insert('users', {
         authUserId: doc._id,
         telegramId,
         telegramUsername: doc.telegramUsername ?? undefined,
         name: doc.name,
         image: doc.image ?? undefined,
-        role,
+        role: 'customer',
         createdAt: now,
         updatedAt: now,
       })
@@ -141,6 +159,18 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>): BetterAuthOptions
     ],
     secret: env('BETTER_AUTH_SECRET'),
     database: authComponent.adapter(ctx),
+    // Account linking lets better-auth attach a second provider (e.g. OIDC) to
+    // an existing user when the email matches. Combined with the unified
+    // `@telegram.local` email below, this is what keeps the same Telegram
+    // person from getting two better-auth user rows when they sign in through
+    // a different flow. trustedProviders bypasses the emailVerified gate
+    // (Telegram never verifies the placeholder email).
+    account: {
+      accountLinking: {
+        enabled: true,
+        trustedProviders: ['telegram', 'telegram-oidc'],
+      },
+    },
     plugins: [
       telegram({
         botToken,
@@ -149,19 +179,20 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>): BetterAuthOptions
           enabled: true,
           validateInitData: true,
           allowAutoSignin: true,
-          // Telegram doesn't provide email — synthesise a placeholder so
-          // better-auth's required-email schema is satisfied.
+          // Telegram doesn't provide email — synthesise a stable placeholder
+          // keyed by the Telegram user id, shared across all three flows
+          // (widget / mini app / OIDC) so account linking can match on it.
           mapMiniAppDataToUser: (u) => ({
             name: u.last_name ? `${u.first_name} ${u.last_name}` : u.first_name,
             image: u.photo_url,
-            email: `${u.id}@telegram.miniapp`,
+            email: `${u.id}@telegram.local`,
             emailVerified: false,
           }),
         },
         mapTelegramDataToUser: (u) => ({
           name: u.last_name ? `${u.first_name} ${u.last_name}` : u.first_name,
           image: u.photo_url,
-          email: `${u.id}@telegram.widget`,
+          email: `${u.id}@telegram.local`,
           emailVerified: false,
         }),
         // OIDC stays disabled until BotFather setup is done and the client
@@ -173,6 +204,16 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>): BetterAuthOptions
                 enabled: true,
                 clientSecret: oidcClientSecret,
                 requestPhone: false,
+                // Stamp telegramId onto the user row better-auth creates for
+                // OIDC. Without this, a later Login Widget / Mini App sign-in
+                // can't find the OIDC-created user by `users.telegramId` and
+                // would create a duplicate row. Also normalises the email so
+                // accountLinking can match a pre-existing widget user.
+                mapOIDCProfileToUser: (claims) => ({
+                  email: `${claims.sub}@telegram.local`,
+                  emailVerified: false,
+                  telegramId: claims.sub,
+                }),
               },
             }
           : {}),

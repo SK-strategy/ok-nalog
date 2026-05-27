@@ -19,7 +19,7 @@ Read it before touching code.
 
 - Node `^22.21.0`, pnpm `^10.19.0` (see `package.json#engines`)
 - Docker + Docker Compose
-- A Telegram bot (BotFather) — token + numeric admin id
+- A Telegram bot (BotFather) — token
 
 ## First-time setup
 
@@ -63,7 +63,7 @@ auth:
 
 ```sh
 cd backend/convex
-for k in BETTER_AUTH_SECRET TELEGRAM_BOT_TOKEN TELEGRAM_ADMIN_IDS \
+for k in BETTER_AUTH_SECRET TELEGRAM_BOT_TOKEN \
          NEXT_PUBLIC_TELEGRAM_BOT_USERNAME \
          WEB_ORIGIN ADMIN_ORIGIN TMA_ORIGIN \
          TELEGRAM_OIDC_CLIENT_ID TELEGRAM_OIDC_CLIENT_SECRET; do

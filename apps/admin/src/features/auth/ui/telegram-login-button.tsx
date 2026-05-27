@@ -14,7 +14,7 @@ export function TelegramLoginButton() {
     setPending(true)
     setError(null)
     try {
-      await authClient.signInWithTelegramOIDC({ callbackURL: '/' })
+      await authClient.signInWithTelegramOIDC({ callbackURL: `${window.location.origin}/` })
     } catch {
       setError('Не удалось войти через Telegram')
       setPending(false)
