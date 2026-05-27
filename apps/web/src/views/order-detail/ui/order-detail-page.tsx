@@ -1,21 +1,22 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useMutation, useQuery } from 'convex/react'
-import { Check, RotateCcw, X } from 'lucide-react'
+import { Check, Inbox, RotateCcw, X } from 'lucide-react'
 
 import type { OrderStatus } from '@tax-assistant/validators'
 import { Button } from '@tax-assistant/ui/button'
 import { Input } from '@tax-assistant/ui/input'
-import { formatKopecks } from '@tax-assistant/validators'
+import { formatKopecks, isTerminal } from '@tax-assistant/validators'
 
-import { PageHeader } from '~/widgets/page-header'
 import { AuthGate } from '~/features/auth'
 import { OrderChat } from '~/features/order-chat'
+import { formatRelativeDate, StatusPill } from '~/entities/order'
 import { useSession } from '~/entities/session'
 import type { Doc, Id } from '~/shared/api'
 import { api } from '~/shared/api'
-import { cn } from '~/shared/lib'
+import { categoryStyle, cn } from '~/shared/lib'
 
 type Order = Omit<Doc<'orders'>, 'customerId' | 'assignedExecutorId'>
 type Category = Doc<'categories'>
@@ -25,58 +26,287 @@ type Role = 'customer' | 'executor' | 'admin'
 const NBSP = ' '
 
 /**
- * /orders/[id] — chat-style ticket. Mirrors apps/tma's order detail:
- * anonymized counterparty header, chat timeline (incl. system events),
- * status-driven action cards rendered inline above the composer.
+ * /orders/[id] — chat-app layout. Two panes on lg+:
+ *
+ *   ┌──────────────────┬────────────────────────────────┐
+ *   │  Обращения       │  ChatHeader  (← mobile only)   │
+ *   │  (sidebar list)  ├────────────────────────────────┤
+ *   │  ⚪ Order ABCD    │  OrderChat (timeline + action  │
+ *   │  ⚪ Order XYZ12   │              card + composer)  │
+ *   │  ...             │                                │
+ *   └──────────────────┴────────────────────────────────┘
+ *
+ * The whole page fills the viewport (`100dvh - SiteHeader`) so the chat
+ * composer stays pinned to the bottom regardless of timeline length —
+ * the standard Slack / Telegram-desktop pattern. The sidebar lists every
+ * order the user is part of (their own + assigned-to-them) so they can
+ * jump between conversations without bouncing through /orders.
+ *
+ * On < lg the sidebar is hidden and the chat fills the full width; a
+ * back-chevron in the chat header is the only nav back to /orders.
  */
 export function OrderDetailPage({ orderId }: { orderId: string }) {
   return (
     <AuthGate>
-      <Detail orderId={orderId as Id<'orders'>} />
+      <DetailLayout orderId={orderId as Id<'orders'>} />
     </AuthGate>
   )
 }
 
-function Detail({ orderId }: { orderId: Id<'orders'> }) {
+// Site header is `h-14` (3.5rem). The detail page fills the rest of the
+// viewport so panes scroll internally instead of the document.
+const PAGE_HEIGHT = 'h-[calc(100dvh-3.5rem)]'
+
+function DetailLayout({ orderId }: { orderId: Id<'orders'> }) {
   const { isAuthenticated } = useSession()
   const data = useQuery(api.orders.get, isAuthenticated ? { orderId } : 'skip')
 
   if (!data) {
     return (
-      <>
-        <PageHeader title="Обращение" back="/orders" />
-        <div className="text-hint p-8 text-center text-sm">Загрузка…</div>
-      </>
+      <div className={cn(PAGE_HEIGHT, 'flex')}>
+        <OrdersSidebar currentOrderId={orderId} />
+        <div className="text-hint flex flex-1 items-center justify-center p-8 text-sm">
+          Загрузка…
+        </div>
+      </div>
     )
   }
 
   const { order, category, tag, role } = data
-  const header = headerFor(role, order, category, tag)
-  const orderNum = shortNum(order._id)
 
   return (
-    <>
-      <PageHeader
-        title={header.title}
-        subtitle={
-          <span>
-            {header.subtitle}
-            <span className="text-hint/70 mx-1">·</span>
-            <span className="tabular-nums">
-              №{NBSP}
-              {orderNum}
-            </span>
-          </span>
-        }
-        back="/orders"
-      />
-      <main
-        className="bg-background mx-auto flex h-[calc(100dvh-7rem)] max-w-3xl flex-col
-          overflow-hidden sm:my-4 sm:h-[calc(100dvh-9rem)] sm:rounded-2xl sm:border sm:shadow-sm"
-      >
+    <div className={cn(PAGE_HEIGHT, 'flex')}>
+      <OrdersSidebar currentOrderId={orderId} />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <ChatHeader order={order} category={category} tag={tag} role={role} />
         <OrderChat order={order} role={role} action={<ActionSlot order={order} role={role} />} />
-      </main>
-    </>
+      </div>
+    </div>
+  )
+}
+
+// ─── orders sidebar ──────────────────────────────────────────────────────
+// Lists every order the user can act on (own customer-side + assigned as
+// executor), deduped, sorted by most recent. Hidden on < lg because there
+// isn't room for a 320px column next to the chat. The current order is
+// always rendered first (even if it's somehow not in the union — e.g.
+// admins viewing arbitrary orders from the web app).
+function OrdersSidebar({ currentOrderId }: { currentOrderId: Id<'orders'> }) {
+  const { isAuthenticated, me } = useSession()
+  const myOrders = useQuery(api.orders.myOrders, isAuthenticated ? {} : 'skip')
+  // `assignedToMe` requires an executor profile; querying it for a
+  // customer-only user just returns []. Worth the extra wire call to keep
+  // both surfaces in one sidebar — no role-specific branching needed here.
+  const hasExecutor = me?.executor !== null && me?.executor !== undefined
+  const assigned = useQuery(api.orders.assignedToMe, hasExecutor ? {} : 'skip')
+  const categories = useQuery(api.categories.listActive, isAuthenticated ? {} : 'skip')
+
+  const categoryById = useMemo(
+    () => new Map((categories ?? []).map((c) => [c._id, c])),
+    [categories],
+  )
+
+  const orders = useMemo<Order[]>(() => {
+    const seen = new Set<Id<'orders'>>()
+    const list: Order[] = []
+    for (const source of [myOrders ?? [], assigned ?? []]) {
+      for (const o of source) {
+        if (seen.has(o._id)) continue
+        seen.add(o._id)
+        list.push(o)
+      }
+    }
+    list.sort((a, b) => b.createdAt - a.createdAt)
+    return list
+  }, [myOrders, assigned])
+
+  const { active, closed } = useMemo(() => splitOrders(orders), [orders])
+
+  const loading = myOrders === undefined || (hasExecutor && assigned === undefined)
+
+  return (
+    <aside
+      className="border-separator hidden w-80 shrink-0 flex-col border-r lg:flex"
+      aria-label="Список обращений"
+    >
+      <header
+        className="border-separator flex h-12 shrink-0 items-center justify-between border-b px-4"
+      >
+        <h2 className="text-foreground text-[13px] font-bold tracking-tight">Обращения</h2>
+        <span className="text-hint text-[12px] tabular-nums">{loading ? '' : orders.length}</span>
+      </header>
+
+      <div className="flex-1 overflow-y-auto">
+        {loading ? (
+          <SidebarSkeleton />
+        ) : orders.length === 0 ? (
+          <SidebarEmpty />
+        ) : (
+          <>
+            {active.length > 0 && (
+              <SidebarSection title={`Активные · ${active.length}`}>
+                {active.map((o) => (
+                  <SidebarRow
+                    key={o._id}
+                    order={o}
+                    category={categoryById.get(o.categoryId)}
+                    active={o._id === currentOrderId}
+                  />
+                ))}
+              </SidebarSection>
+            )}
+            {closed.length > 0 && (
+              <SidebarSection title={`Закрытые · ${closed.length}`}>
+                {closed.map((o) => (
+                  <SidebarRow
+                    key={o._id}
+                    order={o}
+                    category={categoryById.get(o.categoryId)}
+                    active={o._id === currentOrderId}
+                  />
+                ))}
+              </SidebarSection>
+            )}
+          </>
+        )}
+      </div>
+    </aside>
+  )
+}
+
+function SidebarSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="pb-2">
+      <div
+        className="text-hint bg-background sticky top-0 z-[1] px-4 pt-3 pb-1.5 text-[11px] font-bold
+          tracking-[0.06em] uppercase"
+      >
+        {title}
+      </div>
+      <div>{children}</div>
+    </section>
+  )
+}
+
+function SidebarRow({
+  order,
+  category,
+  active,
+}: {
+  order: Order
+  category: Category | undefined
+  active: boolean
+}) {
+  const palette = category ? categoryStyle(category.sortOrder) : null
+  const Icon = palette?.icon
+  return (
+    <Link
+      href={`/orders/${order._id}`}
+      className={cn(
+        'relative flex items-start gap-3 px-4 py-2.5 transition-colors',
+        active
+          ? `bg-primary-soft before:bg-primary before:absolute before:top-1 before:bottom-1
+            before:left-0 before:w-0.5 before:rounded-r-full before:content-[""]`
+          : 'hover:bg-secondary/60',
+      )}
+    >
+      <div
+        className="flex size-9 shrink-0 items-center justify-center rounded-[10px]"
+        style={palette ? { background: palette.bg, color: palette.fg } : undefined}
+      >
+        {Icon ? <Icon className="size-[18px]" strokeWidth={1.8} /> : null}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <div className="text-foreground min-w-0 flex-1 truncate text-[14px] font-semibold">
+            {category?.title ?? 'Обращение'}
+          </div>
+          <span className="text-hint shrink-0 text-[11px] tabular-nums">
+            {formatRelativeDate(order.createdAt)}
+          </span>
+        </div>
+        <p className="text-text-soft mt-0.5 line-clamp-1 text-[12px] leading-snug">
+          {order.description}
+        </p>
+        <div className="mt-1.5">
+          <StatusPill status={order.status} />
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+function SidebarSkeleton() {
+  return (
+    <div className="flex flex-col gap-2 p-4">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="bg-secondary h-14 animate-pulse rounded-xl" />
+      ))}
+    </div>
+  )
+}
+
+function SidebarEmpty() {
+  return (
+    <div className="text-text-soft flex flex-col items-center gap-2 px-6 pt-10 text-center">
+      <div className="text-hint">
+        <Inbox className="size-7" strokeWidth={1.6} />
+      </div>
+      <p className="text-foreground text-[14px] font-bold">Пока пусто</p>
+      <p className="text-[12px] leading-snug">
+        Создайте первое обращение или дождитесь назначения заявки.
+      </p>
+      <Link href="/orders" className="text-primary mt-2 text-[13px] font-semibold">
+        К каталогу →
+      </Link>
+    </div>
+  )
+}
+
+function splitOrders(orders: Order[]): { active: Order[]; closed: Order[] } {
+  const active: Order[] = []
+  const closed: Order[] = []
+  for (const o of orders) {
+    if (isTerminal(o.status)) closed.push(o)
+    else active.push(o)
+  }
+  return { active, closed }
+}
+
+// ─── chat header (right pane top bar) ────────────────────────────────────
+// No back-chevron here — mobile users navigate via the SiteHeader's mobile
+// menu (it has a "Мои заявки" entry) or the browser back button. Status
+// pill always visible so the ticket state is legible without scrolling.
+function ChatHeader({
+  order,
+  category,
+  tag,
+  role,
+}: {
+  order: Order
+  category: Category | null
+  tag: Tag | null
+  role: Role
+}) {
+  const header = headerFor(role, order, category, tag)
+  const orderNum = shortNum(order._id)
+  return (
+    <header className="border-separator flex h-14 shrink-0 items-center gap-3 border-b px-4">
+      <div className="min-w-0 flex-1">
+        <div className="text-foreground truncate text-[14px] leading-tight font-bold">
+          {header.title}
+        </div>
+        <div className="text-hint truncate text-[11.5px] leading-tight">
+          {header.subtitle}
+          <span className="text-hint/70 mx-1">·</span>
+          <span className="tabular-nums">
+            №{NBSP}
+            {orderNum}
+          </span>
+        </div>
+      </div>
+      <StatusPill status={order.status} />
+    </header>
   )
 }
 

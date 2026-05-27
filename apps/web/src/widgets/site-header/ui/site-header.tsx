@@ -1,38 +1,45 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { Menu, X } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { Check, ChevronDown } from 'lucide-react'
 
 import type { HomeMode } from '~/features/switch-mode'
 import { SignOutButton, TelegramLoginButton } from '~/features/auth'
-import { ModeSwitcher } from '~/features/switch-mode'
+import { MODE_HINT, MODE_LABEL, MODE_ROUTE, useHomeMode } from '~/features/switch-mode'
 import { useSession } from '~/entities/session'
 import { cn } from '~/shared/lib'
 
 /**
- * Site-wide header. Sticky at the top of every page. Shows app brand on the
- * left, navigation + mode switcher + user actions on the right. On mobile
- * (<sm) the nav collapses behind a hamburger menu.
+ * Site-wide header. Sticky at the top of every page.
  *
- * Auth state drives what's visible:
- *  - signed out: marketing nav + "Войти через Telegram"
- *  - signed in: links to /orders, /executor; mode switcher when both modes apply
+ * Navigation pattern differs by viewport:
+ *
+ *  - **sm+ (desktop / iPad landscape)**: explicit text nav links —
+ *    "Мои заявки" + "Кабинет эксперта" (the latter only for approved
+ *    executors). Web convention.
+ *  - **<sm (mobile)**: a single dropdown button shows the current section
+ *    and opens to mode rows + user info + sign-out. The dropdown IS the
+ *    mobile menu — no separate hamburger.
+ *
+ * The "Кабинет эксперта" link only appears for approved executors because
+ * the dashboard's "Стать экспертом" CTA is the proper entry point for new
+ * applicants. Showing a "cabinet" link to someone without a cabinet is
+ * misleading.
  */
 export function SiteHeader() {
   const { me } = useSession()
   const pathname = usePathname()
-  const [menuOpen, setMenuOpen] = useState(false)
 
-  // The mode switcher only shows when the user has both surfaces available.
-  // Customer is the universal default; executor unlocks on approval.
+  // Which dashboards the user can reach. Everyone is a customer; only
+  // approved executors get the executor surface in the nav.
   const isExecutor = me?.executor?.status === 'approved'
   const allowed: HomeMode[] = ['customer']
   if (isExecutor) allowed.push('executor')
 
-  // What the switcher highlights — based on the current pathname so the
-  // header always reflects where the user actually is.
+  // What the mobile dropdown highlights / desktop links underline — based
+  // on the current URL so the header always reflects where the user is.
   const currentMode: HomeMode = pathname.startsWith('/executor') ? 'executor' : 'customer'
 
   return (
@@ -42,17 +49,21 @@ export function SiteHeader() {
           Налоговый помощник
         </Link>
 
-        {/* Desktop nav */}
+        {/* Desktop: explicit links + user + sign-out */}
         <nav className="hidden items-center gap-5 text-sm sm:flex">
           {me ? (
             <>
-              <NavLink href="/orders" active={pathname === '/orders' || pathname === '/orders/all'}>
+              <NavLink
+                href="/orders"
+                active={pathname === '/orders' || pathname.startsWith('/orders')}
+              >
                 Мои заявки
               </NavLink>
-              <NavLink href="/executor" active={pathname.startsWith('/executor')}>
-                Кабинет эксперта
-              </NavLink>
-              <ModeSwitcher current={currentMode} allowed={allowed} />
+              {isExecutor && (
+                <NavLink href="/executor" active={pathname.startsWith('/executor')}>
+                  Кабинет эксперта
+                </NavLink>
+              )}
               <span className="text-text-soft hidden text-xs md:inline">{me.user.name}</span>
               <SignOutButton />
             </>
@@ -61,45 +72,15 @@ export function SiteHeader() {
           )}
         </nav>
 
-        {/* Mobile trigger */}
-        <button
-          type="button"
-          aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
-          aria-expanded={menuOpen}
-          className="text-foreground hover:bg-secondary -mr-2 rounded-full p-2 sm:hidden"
-          onClick={() => setMenuOpen((v) => !v)}
-        >
-          {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
-        </button>
-      </div>
-
-      {menuOpen && (
-        <div className="border-separator border-t sm:hidden">
-          <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-3">
-            {me ? (
-              <>
-                <MobileLink href="/orders" onClose={() => setMenuOpen(false)}>
-                  Мои заявки
-                </MobileLink>
-                <MobileLink href="/executor" onClose={() => setMenuOpen(false)}>
-                  Кабинет эксперта
-                </MobileLink>
-                <div
-                  className="border-separator/60 mt-1 flex items-center justify-between gap-2
-                    border-t pt-3"
-                >
-                  <span className="text-text-soft truncate text-sm">{me.user.name}</span>
-                  <SignOutButton />
-                </div>
-              </>
-            ) : (
-              <div onClick={() => setMenuOpen(false)}>
-                <TelegramLoginButton />
-              </div>
-            )}
-          </div>
+        {/* Mobile: single combined dropdown */}
+        <div className="sm:hidden">
+          {me ? (
+            <MobileMenu current={currentMode} allowed={allowed} userName={me.user.name} />
+          ) : (
+            <TelegramLoginButton />
+          )}
         </div>
-      )}
+      </div>
     </header>
   )
 }
@@ -117,8 +98,12 @@ function NavLink({
     <Link
       href={href}
       className={cn(
-        'text-text-soft hover:text-foreground text-sm font-medium transition-colors',
-        active && 'text-foreground',
+        'relative text-sm font-medium transition-colors',
+        // Underline accent on the active link — clearer than just color.
+        active
+          ? `text-foreground after:bg-primary after:absolute after:-bottom-[18px] after:left-0
+            after:h-0.5 after:w-full after:content-[""]`
+          : 'text-text-soft hover:text-foreground',
       )}
     >
       {children}
@@ -126,22 +111,120 @@ function NavLink({
   )
 }
 
-function MobileLink({
-  href,
-  onClose,
-  children,
+/**
+ * Combined mobile menu. The trigger button shows the current section so
+ * users know where they are at a glance; tapping it opens a panel with
+ * mode rows (acts as nav) + user info + sign-out.
+ */
+function MobileMenu({
+  current,
+  allowed,
+  userName,
 }: {
-  href: string
-  onClose: () => void
-  children: React.ReactNode
+  current: HomeMode
+  allowed: HomeMode[]
+  userName: string
+}) {
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
+  const [, setMode] = useHomeMode()
+
+  // Close on click outside / escape so the dropdown behaves like a menu.
+  useEffect(() => {
+    if (!open) return
+    const onClick = (e: MouseEvent) => {
+      if (!containerRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const selectMode = (next: HomeMode) => {
+    setMode(next)
+    setOpen(false)
+    router.push(MODE_ROUTE[next])
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="bg-secondary text-foreground hover:bg-secondary/80 flex items-center gap-1
+          rounded-lg px-3 py-1.5 text-[13px] font-semibold transition-colors"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        {MODE_LABEL[current]}
+        <ChevronDown className={cn('size-3.5 transition-transform', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div
+          className="border-separator bg-background absolute top-full right-0 z-50 mt-1.5 w-64
+            overflow-hidden rounded-xl border shadow-lg"
+          role="menu"
+        >
+          <div className="flex flex-col py-1">
+            {allowed.map((m) => (
+              <ModeRow
+                key={m}
+                label={MODE_LABEL[m]}
+                hint={MODE_HINT[m]}
+                selected={current === m}
+                onClick={() => selectMode(m)}
+              />
+            ))}
+          </div>
+          <div
+            className="border-separator/60 flex items-center justify-between gap-2 border-t px-3
+              py-2.5"
+          >
+            <span className="text-text-soft truncate text-[13px]">{userName}</span>
+            <div onClick={() => setOpen(false)}>
+              <SignOutButton />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ModeRow({
+  label,
+  hint,
+  selected,
+  onClick,
+}: {
+  label: string
+  hint: string
+  selected: boolean
+  onClick: () => void
 }) {
   return (
-    <Link
-      href={href}
-      onClick={onClose}
-      className="text-foreground hover:bg-secondary rounded-lg px-3 py-2 text-sm font-medium"
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      className={cn(
+        'flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors',
+        selected ? 'bg-primary-soft' : 'hover:bg-secondary',
+      )}
     >
-      {children}
-    </Link>
+      <div className="min-w-0 flex-1">
+        <div className="text-foreground text-[14px] leading-tight font-semibold">{label}</div>
+        <div className="text-text-soft mt-0.5 text-[12px] leading-tight">{hint}</div>
+      </div>
+      {selected && <Check className="text-primary mt-0.5 size-4 shrink-0" />}
+    </button>
   )
 }

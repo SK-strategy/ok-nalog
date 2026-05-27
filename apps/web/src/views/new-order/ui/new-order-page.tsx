@@ -5,7 +5,6 @@ import { useSearchParams } from 'next/navigation'
 import type { ClientType } from '@tax-assistant/validators'
 import { CLIENT_TYPES } from '@tax-assistant/validators'
 
-import { PageHeader } from '~/widgets/page-header'
 import { AuthGate } from '~/features/auth'
 import { NewQuestionForm, useNewQuestionForm } from '~/features/create-order'
 import type { Id } from '~/shared/api'
@@ -24,14 +23,14 @@ export function NewOrderPage() {
   const clientType = isClientType(ctParam) ? ctParam : undefined
 
   return (
-    <>
-      <PageHeader title="Новое обращение" back="/orders" />
-      <main className="mx-auto max-w-2xl pt-3 pb-12 sm:px-6">
-        <AuthGate>
-          <FormShell initialCategoryId={initialCategoryId} clientType={clientType} />
-        </AuthGate>
-      </main>
-    </>
+    <main className="mx-auto max-w-2xl px-4 pt-6 pb-12 sm:px-6">
+      <h1 className="text-foreground text-2xl leading-tight font-bold tracking-tight">
+        Новое обращение
+      </h1>
+      <AuthGate>
+        <FormShell initialCategoryId={initialCategoryId} clientType={clientType} />
+      </AuthGate>
+    </main>
   )
 }
 

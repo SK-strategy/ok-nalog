@@ -5,7 +5,6 @@ import { useQuery } from 'convex/react'
 
 import { isTerminal } from '@tax-assistant/validators'
 
-import { PageHeader } from '~/widgets/page-header'
 import { AuthGate } from '~/features/auth'
 import { OrderRow, OrdersList } from '~/entities/order'
 import { useSession } from '~/entities/session'
@@ -20,14 +19,14 @@ type Order = Doc<'orders'>
  */
 export function OrdersListPage() {
   return (
-    <>
-      <PageHeader title="Все обращения" back="/orders" />
-      <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 pt-5 pb-12 sm:px-6">
-        <AuthGate>
-          <Content />
-        </AuthGate>
-      </main>
-    </>
+    <main className="mx-auto flex max-w-4xl flex-col gap-6 px-4 pt-6 pb-12 sm:px-6">
+      <h1 className="text-foreground text-2xl leading-tight font-bold tracking-tight">
+        Все обращения
+      </h1>
+      <AuthGate>
+        <Content />
+      </AuthGate>
+    </main>
   )
 }
 

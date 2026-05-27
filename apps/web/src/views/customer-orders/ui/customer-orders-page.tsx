@@ -8,7 +8,6 @@ import { ChevronRight, Clock, Plus, Search, Sparkles, XCircle } from 'lucide-rea
 
 import { formatKopecks } from '@tax-assistant/validators'
 
-import { PageHeader } from '~/widgets/page-header'
 import { AuthGate } from '~/features/auth'
 import { CategorySearchSheet, categoryStyle } from '~/entities/category'
 import { ClientTypeSegmented, useClientType } from '~/entities/client-type'
@@ -28,18 +27,19 @@ const HOME_ORDERS_LIMIT = 5
  *   - middle: client-type segmented + categories grid
  *   - bottom: become-executor CTA (status-aware)
  *
- * Responsive: single column ≤640, 2-col categories on ≥sm, 3-col on ≥md.
+ * No in-page `PageHeader` — the SiteHeader brand already says "Налоговый
+ * помощник", and the dashboard's own H1 ("Здравствуйте, …") is the page
+ * identity. The narrow `max-w-3xl` cap from the first port has been bumped
+ * to `max-w-6xl` so wider screens (laptop / iPad landscape) actually use
+ * the available real estate; categories scale from 2 → 3 → 4 columns.
  */
 export function CustomerOrdersPage() {
   return (
-    <>
-      <PageHeader title="Налоговый помощник" />
-      <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 pt-5 pb-12 sm:px-6">
-        <AuthGate>
-          <Dashboard />
-        </AuthGate>
-      </main>
-    </>
+    <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 pt-6 pb-12 sm:px-6 lg:px-8">
+      <AuthGate>
+        <Dashboard />
+      </AuthGate>
+    </main>
   )
 }
 
@@ -145,9 +145,9 @@ function Dashboard() {
 
       <section>
         <SectionHeader title="Категории" />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {categories === undefined &&
-            Array.from({ length: 6 }).map((_, i) => <CategorySkeleton key={i} />)}
+            Array.from({ length: 8 }).map((_, i) => <CategorySkeleton key={i} />)}
           {categories?.map((c) => (
             <CategoryTile key={c._id} category={c} onClick={() => openCategory(c._id)} />
           ))}

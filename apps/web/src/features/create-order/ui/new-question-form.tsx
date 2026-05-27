@@ -37,7 +37,7 @@ export function NewQuestionForm({
   const tagsDisabled = !form.categoryId
 
   return (
-    <div className="flex flex-col gap-4 px-4 pt-4 pb-6 sm:px-0">
+    <div className="flex flex-col gap-4 pt-4 pb-6">
       <Field label="Категория">
         <CategoryField
           category={form.category}

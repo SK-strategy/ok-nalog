@@ -18,7 +18,6 @@ import type { OrderStatus } from '@tax-assistant/validators'
 import { Button } from '@tax-assistant/ui/button'
 import { formatKopecks, isTerminal } from '@tax-assistant/validators'
 
-import { PageHeader } from '~/widgets/page-header'
 import type { ExecutorApplicationInitial } from '~/features/executor-application'
 import { AuthGate } from '~/features/auth'
 import { AvailableOrderRow, AvailableOrderSheet } from '~/features/claim-order'
@@ -80,13 +79,13 @@ function Dispatcher() {
 
 function LoadingScreen() {
   return (
-    <>
-      <PageHeader title="Кабинет эксперта" back="/orders" />
-      <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 pt-5 sm:px-6">
-        <div className="bg-secondary h-24 animate-pulse rounded-2xl" />
-        <div className="bg-secondary h-40 animate-pulse rounded-2xl" />
-      </main>
-    </>
+    <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 pt-6 sm:px-6">
+      <h1 className="text-foreground text-2xl leading-tight font-bold tracking-tight">
+        Кабинет эксперта
+      </h1>
+      <div className="bg-secondary h-24 animate-pulse rounded-2xl" />
+      <div className="bg-secondary h-40 animate-pulse rounded-2xl" />
+    </main>
   )
 }
 
@@ -94,48 +93,48 @@ function LoadingScreen() {
 function ApplyScreen() {
   const form = useExecutorApplication()
   return (
-    <>
-      <PageHeader title="Стать экспертом" back="/orders" />
-      <main className="mx-auto flex max-w-2xl flex-col gap-5 px-4 pt-5 pb-12 sm:px-6">
-        <Hero
-          icon={<Sparkles className="size-6" strokeWidth={1.8} />}
-          tone="primary"
-          title="Консультируйте и получайте вознаграждение"
-          body="Заполните короткую анкету — администратор проверит её и подключит вас к подходящим заявкам."
-        />
-        <Perks
-          items={[
-            {
-              icon: <Inbox className="size-[18px]" strokeWidth={1.8} />,
-              title: 'Заявки по вашим тематикам',
-              body: 'Видите заявки сразу после оплаты клиентом — берёте те, что подходят.',
-            },
-            {
-              icon: <MessageSquareLock className="size-[18px]" strokeWidth={1.8} />,
-              title: 'Анонимный чат',
-              body: 'Клиент не видит ваших контактов — общение только внутри заявки.',
-            },
-            {
-              icon: <Wallet className="size-[18px]" strokeWidth={1.8} />,
-              title: 'Прозрачные выплаты',
-              body: 'Баланс пополняется после подтверждения ответа клиентом.',
-            },
-          ]}
-        />
-        <ExecutorApplicationForm form={form} />
-        <div className="flex justify-end pt-1">
-          <Button
-            size="lg"
-            disabled={!form.canSubmit}
-            onClick={() => void form.submit()}
-            className="min-w-[200px]"
-          >
-            {form.submitting ? 'Отправляем…' : 'Отправить анкету'}
-          </Button>
-        </div>
-        <TrustFooter text="После отправки анкета попадёт к администратору. Мы напишем сюда, как только её рассмотрят." />
-      </main>
-    </>
+    <main className="mx-auto flex max-w-2xl flex-col gap-5 px-4 pt-6 pb-12 sm:px-6">
+      <h1 className="text-foreground text-2xl leading-tight font-bold tracking-tight">
+        Стать экспертом
+      </h1>
+      <Hero
+        icon={<Sparkles className="size-6" strokeWidth={1.8} />}
+        tone="primary"
+        title="Консультируйте и получайте вознаграждение"
+        body="Заполните короткую анкету — администратор проверит её и подключит вас к подходящим заявкам."
+      />
+      <Perks
+        items={[
+          {
+            icon: <Inbox className="size-[18px]" strokeWidth={1.8} />,
+            title: 'Заявки по вашим тематикам',
+            body: 'Видите заявки сразу после оплаты клиентом — берёте те, что подходят.',
+          },
+          {
+            icon: <MessageSquareLock className="size-[18px]" strokeWidth={1.8} />,
+            title: 'Анонимный чат',
+            body: 'Клиент не видит ваших контактов — общение только внутри заявки.',
+          },
+          {
+            icon: <Wallet className="size-[18px]" strokeWidth={1.8} />,
+            title: 'Прозрачные выплаты',
+            body: 'Баланс пополняется после подтверждения ответа клиентом.',
+          },
+        ]}
+      />
+      <ExecutorApplicationForm form={form} />
+      <div className="flex justify-end pt-1">
+        <Button
+          size="lg"
+          disabled={!form.canSubmit}
+          onClick={() => void form.submit()}
+          className="min-w-[200px]"
+        >
+          {form.submitting ? 'Отправляем…' : 'Отправить анкету'}
+        </Button>
+      </div>
+      <TrustFooter text="После отправки анкета попадёт к администратору. Мы напишем сюда, как только её рассмотрят." />
+    </main>
   )
 }
 
@@ -145,8 +144,10 @@ function PendingScreen({ profile }: { profile: Profile | undefined }) {
   const initial = profile ? toInitial(profile) : undefined
   return (
     <>
-      <PageHeader title="Кабинет эксперта" back="/orders" />
-      <main className="mx-auto flex max-w-2xl flex-col gap-5 px-4 pt-5 pb-12 sm:px-6">
+      <main className="mx-auto flex max-w-2xl flex-col gap-5 px-4 pt-6 pb-12 sm:px-6">
+        <h1 className="text-foreground text-2xl leading-tight font-bold tracking-tight">
+          Кабинет эксперта
+        </h1>
         <Hero
           icon={<Clock className="size-6" strokeWidth={1.8} />}
           tone="pending"
@@ -171,39 +172,39 @@ function RejectedScreen({ profile }: { profile: Profile | undefined }) {
   const initial = profile ? toInitial(profile) : undefined
   const form = useExecutorApplication({ initial })
   return (
-    <>
-      <PageHeader title="Кабинет эксперта" back="/orders" />
-      <main className="mx-auto flex max-w-2xl flex-col gap-5 px-4 pt-5 pb-12 sm:px-6">
-        <Hero
-          icon={<XCircle className="size-6" strokeWidth={1.8} />}
-          tone="rejected"
-          title="Анкета не прошла проверку"
-          body="Поправьте указанное ниже и отправьте заново — мы рассмотрим повторно."
-        />
-        {profile?.rejectionReason && (
-          <div className="border-destructive/30 bg-destructive/5 rounded-2xl border px-4 py-3.5">
-            <div className="text-destructive text-[11px] font-bold tracking-[0.06em] uppercase">
-              Комментарий администратора
-            </div>
-            <p className="text-foreground mt-1 text-[13px] leading-relaxed whitespace-pre-wrap">
-              {profile.rejectionReason}
-            </p>
+    <main className="mx-auto flex max-w-2xl flex-col gap-5 px-4 pt-6 pb-12 sm:px-6">
+      <h1 className="text-foreground text-2xl leading-tight font-bold tracking-tight">
+        Кабинет эксперта
+      </h1>
+      <Hero
+        icon={<XCircle className="size-6" strokeWidth={1.8} />}
+        tone="rejected"
+        title="Анкета не прошла проверку"
+        body="Поправьте указанное ниже и отправьте заново — мы рассмотрим повторно."
+      />
+      {profile?.rejectionReason && (
+        <div className="border-destructive/30 bg-destructive/5 rounded-2xl border px-4 py-3.5">
+          <div className="text-destructive text-[11px] font-bold tracking-[0.06em] uppercase">
+            Комментарий администратора
           </div>
-        )}
-        <ExecutorApplicationForm form={form} />
-        <div className="flex justify-end pt-1">
-          <Button
-            size="lg"
-            disabled={!form.canSubmit}
-            onClick={() => void form.submit()}
-            className="min-w-[220px]"
-          >
-            {form.submitting ? 'Отправляем…' : 'Отправить повторно'}
-          </Button>
+          <p className="text-foreground mt-1 text-[13px] leading-relaxed whitespace-pre-wrap">
+            {profile.rejectionReason}
+          </p>
         </div>
-        <TrustFooter text="После повторной отправки анкета снова попадёт к администратору." />
-      </main>
-    </>
+      )}
+      <ExecutorApplicationForm form={form} />
+      <div className="flex justify-end pt-1">
+        <Button
+          size="lg"
+          disabled={!form.canSubmit}
+          onClick={() => void form.submit()}
+          className="min-w-[220px]"
+        >
+          {form.submitting ? 'Отправляем…' : 'Отправить повторно'}
+        </Button>
+      </div>
+      <TrustFooter text="После повторной отправки анкета снова попадёт к администратору." />
+    </main>
   )
 }
 
@@ -237,63 +238,74 @@ function ApprovedCabinet({
 
   return (
     <>
-      <PageHeader title="Кабинет эксперта" back="/orders" />
-      <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 pt-5 pb-12 sm:px-6">
-        <AvailableSection
-          available={available}
-          hasActive={hasActive}
-          hasNoCategories={hasNoCategories}
-          categoryById={categoryById}
-          onEditProfile={() => setEditOpen(true)}
-        />
+      <main className="mx-auto max-w-6xl px-4 pt-6 pb-12 sm:px-6 lg:px-8">
+        <h1 className="text-foreground mb-6 text-2xl leading-tight font-bold tracking-tight">
+          Кабинет эксперта
+        </h1>
+        {/* 2-col on lg+: pool + assigned on the left (where attention sits),
+         *  balance + анкета on the right. Falls back to single column on
+         *  narrow viewports — same vertical reading order. */}
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8">
+          <div className="flex min-w-0 flex-col gap-6">
+            <AvailableSection
+              available={available}
+              hasActive={hasActive}
+              hasNoCategories={hasNoCategories}
+              categoryById={categoryById}
+              onEditProfile={() => setEditOpen(true)}
+            />
 
-        {active.length > 0 && (
-          <Section title={`В работе · ${active.length}`}>
-            <OrdersList>
-              {active.map((o, i) => (
-                <OrderRow
-                  key={o._id}
-                  order={o}
-                  category={categoryById.get(o.categoryId)}
-                  isFirst={i === 0}
-                  href={`/orders/${o._id}`}
-                />
-              ))}
-            </OrdersList>
-          </Section>
-        )}
+            {active.length > 0 && (
+              <Section title={`В работе · ${active.length}`}>
+                <OrdersList>
+                  {active.map((o, i) => (
+                    <OrderRow
+                      key={o._id}
+                      order={o}
+                      category={categoryById.get(o.categoryId)}
+                      isFirst={i === 0}
+                      href={`/orders/${o._id}`}
+                    />
+                  ))}
+                </OrdersList>
+              </Section>
+            )}
 
-        <BalanceCard
-          balance={balance}
-          lifetimeEarned={lifetimeEarned}
-          completedCount={completedCount}
-        />
+            {closed.length > 0 && (
+              <Section title={`Завершённые · ${closed.length}`}>
+                <OrdersList>
+                  {closed.map((o, i) => (
+                    <OrderRow
+                      key={o._id}
+                      order={o}
+                      category={categoryById.get(o.categoryId)}
+                      isFirst={i === 0}
+                      href={`/orders/${o._id}`}
+                    />
+                  ))}
+                </OrdersList>
+              </Section>
+            )}
+          </div>
 
-        {closed.length > 0 && (
-          <Section title={`Завершённые · ${closed.length}`}>
-            <OrdersList>
-              {closed.map((o, i) => (
-                <OrderRow
-                  key={o._id}
-                  order={o}
-                  category={categoryById.get(o.categoryId)}
-                  isFirst={i === 0}
-                  href={`/orders/${o._id}`}
-                />
-              ))}
-            </OrdersList>
-          </Section>
-        )}
+          <aside className="flex flex-col gap-6 lg:sticky lg:top-20 lg:self-start">
+            <BalanceCard
+              balance={balance}
+              lifetimeEarned={lifetimeEarned}
+              completedCount={completedCount}
+            />
 
-        {profile && (
-          <SubmittedPreview
-            profile={profile}
-            categoryById={categoryById}
-            onEdit={() => setEditOpen(true)}
-            editLabel="Изменить"
-            headerLabel="Анкета"
-          />
-        )}
+            {profile && (
+              <SubmittedPreview
+                profile={profile}
+                categoryById={categoryById}
+                onEdit={() => setEditOpen(true)}
+                editLabel="Изменить"
+                headerLabel="Анкета"
+              />
+            )}
+          </aside>
+        </div>
       </main>
 
       <ProfileEditSheet open={editOpen} initial={initial} onClose={() => setEditOpen(false)} />
