@@ -14,6 +14,9 @@ export const metadata: Metadata = {
   description: 'Панель администратора',
 }
 
+// Read env.CONVEX_URL at request time, not at build time.
+export const dynamic = 'force-dynamic'
+
 const manrope = Manrope({
   subsets: ['latin', 'cyrillic'],
   weight: ['400', '500', '600', '700', '800'],

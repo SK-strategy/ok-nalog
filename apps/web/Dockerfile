@@ -3,18 +3,31 @@
 #   docker buildx build -f apps/web/Dockerfile -t ghcr.io/netosha/tax-assistant-web:<tag> .
 
 # Stage 1 — prune the monorepo to just this app's dep graph.
+# npm-install over corepack avoids the corepack-signature TLS fetch that
+# undici flakes on inside BuildKit.
 FROM node:22-alpine AS pruner
 RUN apk add --no-cache libc6-compat
-RUN corepack enable && corepack prepare pnpm@10.19.0 --activate
+# Generous npm retry timeouts — Docker BuildKit on WSL2 occasionally drops the
+# registry TLS connection mid-fetch. Retries inside npm fix it without needing
+# a host-side loop.
+RUN npm config set fetch-retries 8 \
+ && npm config set fetch-retry-mintimeout 10000 \
+ && npm config set fetch-retry-maxtimeout 60000 \
+ && npm config set fetch-timeout 120000 \
+ && for i in 1 2 3 4 5; do npm install -g turbo@2.5.8 && break || sleep 5; done
 WORKDIR /app
 COPY . .
-RUN pnpm dlx turbo@2.5.8 prune @tax-assistant/web --docker
+RUN turbo prune @tax-assistant/web --docker
 
 # Stage 2 — install deps from the pruned package.jsons.
 # Layer caches on the lockfile hash, so a code-only change skips reinstall.
 FROM node:22-alpine AS installer
 RUN apk add --no-cache libc6-compat
-RUN corepack enable && corepack prepare pnpm@10.19.0 --activate
+RUN npm config set fetch-retries 8 \
+ && npm config set fetch-retry-mintimeout 10000 \
+ && npm config set fetch-retry-maxtimeout 60000 \
+ && npm config set fetch-timeout 120000 \
+ && for i in 1 2 3 4 5; do npm install -g pnpm@10.19.0 && break || sleep 5; done
 WORKDIR /app
 COPY --from=pruner /app/out/json/ ./
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \

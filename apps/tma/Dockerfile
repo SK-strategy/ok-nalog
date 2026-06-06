@@ -4,14 +4,22 @@
 
 FROM node:22-alpine AS pruner
 RUN apk add --no-cache libc6-compat
-RUN corepack enable && corepack prepare pnpm@10.19.0 --activate
+RUN npm config set fetch-retries 8 \
+ && npm config set fetch-retry-mintimeout 10000 \
+ && npm config set fetch-retry-maxtimeout 60000 \
+ && npm config set fetch-timeout 120000 \
+ && for i in 1 2 3 4 5; do npm install -g turbo@2.5.8 && break || sleep 5; done
 WORKDIR /app
 COPY . .
-RUN pnpm dlx turbo@2.5.8 prune @tax-assistant/tma --docker
+RUN turbo prune @tax-assistant/tma --docker
 
 FROM node:22-alpine AS installer
 RUN apk add --no-cache libc6-compat
-RUN corepack enable && corepack prepare pnpm@10.19.0 --activate
+RUN npm config set fetch-retries 8 \
+ && npm config set fetch-retry-mintimeout 10000 \
+ && npm config set fetch-retry-maxtimeout 60000 \
+ && npm config set fetch-timeout 120000 \
+ && for i in 1 2 3 4 5; do npm install -g pnpm@10.19.0 && break || sleep 5; done
 WORKDIR /app
 COPY --from=pruner /app/out/json/ ./
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \

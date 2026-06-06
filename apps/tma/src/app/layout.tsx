@@ -14,6 +14,9 @@ export const metadata: Metadata = {
   description: 'Telegram Mini App',
 }
 
+// Read env.CONVEX_URL at request time, not at build time.
+export const dynamic = 'force-dynamic'
+
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,

@@ -14,6 +14,12 @@ export const metadata: Metadata = {
   description: 'Консультации по налоговым вопросам с проверенными экспертами',
 }
 
+// Read env.CONVEX_URL at request time, not at build time. Without this,
+// Next.js statically prerenders /_not-found (and any other root-static page)
+// at build, which fails because CONVEX_URL is undefined inside the Docker
+// builder — defeating the runtime-env design.
+export const dynamic = 'force-dynamic'
+
 export const viewport: Viewport = {
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
