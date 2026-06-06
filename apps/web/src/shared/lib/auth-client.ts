@@ -1,17 +1,28 @@
 'use client'
 
+import { createContext, use } from 'react'
 import { convexClient, crossDomainClient } from '@convex-dev/better-auth/client/plugins'
 import { telegramClient } from 'better-auth-telegram/client'
 import { createAuthClient } from 'better-auth/react'
 
-import { env } from '~/shared/config'
+// Factory so the auth client picks up `CONVEX_SITE_URL` from the server-rendered
+// RootLayout at request time instead of from a build-time-inlined NEXT_PUBLIC_*.
+// `crossDomainClient` keeps the auth cookie alive across the app↔Convex origin
+// split by stashing it in localStorage and replaying it as a header on every
+// request, so we don't need SameSite=None+Secure on the cookie itself.
+export function createAuthClientFor(baseURL: string) {
+  return createAuthClient({
+    baseURL,
+    plugins: [telegramClient(), convexClient(), crossDomainClient()],
+  })
+}
 
-// Single auth client per app — talks to better-auth's HTTP routes mounted on
-// the Convex backend (CONVEX_SITE_URL, port 3311). `crossDomainClient` is what
-// makes auth survive the app↔Convex origin split locally: it stores the auth
-// cookie in localStorage and replays it as a header on every request, so we
-// don't need SameSite=None+Secure (which would require HTTPS).
-export const authClient = createAuthClient({
-  baseURL: env.NEXT_PUBLIC_CONVEX_SITE_URL,
-  plugins: [telegramClient(), convexClient(), crossDomainClient()],
-})
+export type AuthClient = ReturnType<typeof createAuthClientFor>
+
+export const AuthClientContext = createContext<AuthClient | null>(null)
+
+export function useAuthClient(): AuthClient {
+  const c = use(AuthClientContext)
+  if (!c) throw new Error('useAuthClient must be used within <Providers>')
+  return c
+}

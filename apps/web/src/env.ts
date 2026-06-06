@@ -5,18 +5,19 @@ export const env = createEnv({
   shared: {
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   },
-  server: {},
-  client: {
-    // Convex websocket URL (queries/mutations).
-    NEXT_PUBLIC_CONVEX_URL: z.url(),
-    // Convex HTTP actions origin — where better-auth's /api/auth/* routes
-    // are mounted (port 3311 locally). The auth client targets this.
-    NEXT_PUBLIC_CONVEX_SITE_URL: z.url(),
+  server: {
+    // Read in the server component RootLayout at request time and passed down
+    // to <Providers> as plain props. Dropping the NEXT_PUBLIC_ prefix is what
+    // stops Next.js from inlining the value into the client bundle — i.e.
+    // what makes the prod image env-agnostic and re-deployable without rebuild.
+    CONVEX_URL: z.url(),
+    CONVEX_SITE_URL: z.url(),
   },
-  experimental__runtimeEnv: {
+  client: {},
+  runtimeEnv: {
     NODE_ENV: process.env.NODE_ENV,
-    NEXT_PUBLIC_CONVEX_URL: process.env.NEXT_PUBLIC_CONVEX_URL,
-    NEXT_PUBLIC_CONVEX_SITE_URL: process.env.NEXT_PUBLIC_CONVEX_SITE_URL,
+    CONVEX_URL: process.env.CONVEX_URL,
+    CONVEX_SITE_URL: process.env.CONVEX_SITE_URL,
   },
   skipValidation: !!process.env.CI || process.env.npm_lifecycle_event === 'lint',
 })

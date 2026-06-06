@@ -1,0 +1,140 @@
+# Production stack for tax-assistant.oknalog.net
+# Deploy: copy this file + Caddyfile.prod + .env to /opt/tax-assistant on the VPS.
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# See DEPLOY.md for the full bootstrap sequence (admin key, JWKS, env vars).
+
+name: tax-assistant
+
+services:
+  # ───────────────────────── Caddy (TLS termination) ──────────────────────────
+  # Owns the public surface: ports 80/443 on the host. Issues Let's Encrypt
+  # certs for every hostname declared in Caddyfile.prod. Everything else binds
+  # to the internal docker network only (no host-port mapping).
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'  # HTTP/3
+    volumes:
+      - ./Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data         # LE certs + ACME account key
+      - caddy_config:/config
+    environment:
+      LE_EMAIL: ${LE_EMAIL}
+      DASHBOARD_USER: ${DASHBOARD_USER}
+      DASHBOARD_BCRYPT: ${DASHBOARD_BCRYPT}
+    depends_on:
+      - web
+      - admin
+      - tma
+      - convex-backend
+      - convex-dashboard
+
+  # ─────────────────────────────── Postgres ───────────────────────────────────
+  # Stores the Convex backend's instance data. Bound to 127.0.0.1 so it's only
+  # reachable via SSH tunnel; the convex-backend container talks to it over the
+  # docker network at `postgres:5432`.
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:5532:5432'
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ───────────────────────── Convex backend (self-hosted) ─────────────────────
+  # Two HTTP servers in one container — :3210 (Cloud API + WebSocket sync) and
+  # :3211 (Site / HTTP actions, where better-auth's /api/auth/* lives). Both
+  # origins point at the same public hostname (api.oknalog.net); Caddy
+  # path-routes between them.
+  convex-backend:
+    image: ghcr.io/get-convex/convex-backend:latest
+    restart: unless-stopped
+    stop_grace_period: 10s
+    stop_signal: SIGINT
+    expose:
+      - '3210'
+      - '3211'
+    environment:
+      INSTANCE_NAME: ${INSTANCE_NAME}
+      INSTANCE_SECRET: ${INSTANCE_SECRET}
+      CONVEX_CLOUD_ORIGIN: ${CONVEX_CLOUD_ORIGIN}
+      CONVEX_SITE_ORIGIN: ${CONVEX_SITE_ORIGIN}
+      POSTGRES_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432
+      DO_NOT_REQUIRE_SSL: 'true'
+      DISABLE_BEACON: ${DISABLE_BEACON:-true}
+      REDACT_LOGS_TO_CLIENT: ${REDACT_LOGS_TO_CLIENT:-true}
+    volumes:
+      - convex_data:/convex/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ───────────────────────── Convex dashboard ────────────────────────────────
+  # Exposed at convex.admin.oknalog.net behind basic auth. The admin-key login
+  # inside the dashboard itself is preserved; Caddy basic auth is the perimeter.
+  convex-dashboard:
+    image: ghcr.io/get-convex/convex-dashboard:latest
+    restart: unless-stopped
+    stop_grace_period: 10s
+    stop_signal: SIGINT
+    expose:
+      - '6791'
+    environment:
+      NEXT_PUBLIC_DEPLOYMENT_URL: ${CONVEX_CLOUD_ORIGIN}
+    depends_on:
+      - convex-backend
+
+  # ───────────────────────── App containers ─────────────────────────────────
+  # All three listen on :3000 internally; Caddy routes by Host. Image tags come
+  # from .env so a deploy is just `docker compose pull && up -d`.
+  web:
+    image: ${WEB_IMAGE}
+    restart: unless-stopped
+    expose:
+      - '3000'
+    environment:
+      CONVEX_URL: ${CONVEX_URL}
+      CONVEX_SITE_URL: ${CONVEX_SITE_URL}
+    depends_on:
+      - convex-backend
+
+  admin:
+    image: ${ADMIN_IMAGE}
+    restart: unless-stopped
+    expose:
+      - '3000'
+    environment:
+      CONVEX_URL: ${CONVEX_URL}
+      CONVEX_SITE_URL: ${CONVEX_SITE_URL}
+    depends_on:
+      - convex-backend
+
+  tma:
+    image: ${TMA_IMAGE}
+    restart: unless-stopped
+    expose:
+      - '3000'
+    environment:
+      CONVEX_URL: ${CONVEX_URL}
+      CONVEX_SITE_URL: ${CONVEX_SITE_URL}
+    depends_on:
+      - convex-backend
+
+volumes:
+  postgres_data:
+  convex_data:
+  caddy_data:
+  caddy_config:

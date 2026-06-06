@@ -4,7 +4,7 @@ import { useState } from 'react'
 
 import { Button } from '@tax-assistant/ui/button'
 
-import { authClient } from '~/shared/lib/auth-client'
+import { useAuthClient } from '~/shared/lib/auth-client'
 
 /**
  * Telegram OIDC sign-in. Redirects the user to oauth.telegram.org; on success
@@ -19,6 +19,7 @@ import { authClient } from '~/shared/lib/auth-client'
  * `window.location.origin` keeps every app on its own host.
  */
 export function TelegramLoginButton() {
+  const authClient = useAuthClient()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 

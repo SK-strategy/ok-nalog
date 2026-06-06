@@ -4,9 +4,10 @@ import { useState } from 'react'
 
 import { Button } from '@tax-assistant/ui/button'
 
-import { authClient } from '~/shared/lib/auth-client'
+import { useAuthClient } from '~/shared/lib/auth-client'
 
 export function TelegramLoginButton() {
+  const authClient = useAuthClient()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 

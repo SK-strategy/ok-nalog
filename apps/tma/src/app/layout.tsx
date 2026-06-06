@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Manrope } from 'next/font/google'
 import Script from 'next/script'
+import { env } from '~/env'
 
 import { cn } from '@tax-assistant/ui'
 
@@ -49,7 +50,9 @@ export default function RootLayout(props: { children: React.ReactNode }) {
           manrope.variable,
         )}
       >
-        <Providers>{props.children}</Providers>
+        <Providers convexUrl={env.CONVEX_URL} convexSiteUrl={env.CONVEX_SITE_URL}>
+          {props.children}
+        </Providers>
       </body>
     </html>
   )

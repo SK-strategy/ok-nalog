@@ -1,0 +1,58 @@
+# Production Caddyfile for oknalog.net.
+# Mounted into the caddy container; needs DNS A records for every hostname
+# below pointing at the VPS before Let's Encrypt will issue.
+
+{
+    email {$LE_EMAIL}
+    # auto_https stays ON (default) — Caddy mints LE certs for every host block.
+}
+
+# ─────────────────────────────── Public site ────────────────────────────────
+oknalog.net {
+    reverse_proxy web:3000
+}
+
+# Canonical → apex. 308 keeps method on POSTs.
+www.oknalog.net {
+    redir https://oknalog.net{uri} 308
+}
+
+# ─────────────────────────────────── Admin ──────────────────────────────────
+admin.oknalog.net {
+    reverse_proxy admin:3000
+}
+
+# ──────────────────────────── Telegram Mini App ─────────────────────────────
+tma.oknalog.net {
+    reverse_proxy tma:3000
+}
+
+# ─────────────────────────── Convex (Cloud + Site) ──────────────────────────
+# One public hostname collapses both Convex servers:
+#   :3210 — Cloud API (queries/mutations + WebSocket sync at /api/sync)
+#   :3211 — Site (HTTP actions; better-auth /api/auth/* + /.well-known/*)
+# Site paths are a fixed allowlist below. Anything else falls through to Cloud.
+# If you ever add HTTP actions outside /api/auth/* or /.well-known/*, extend
+# the @site matcher here.
+api.oknalog.net {
+    @site {
+        path /api/auth*
+        path /.well-known/*
+    }
+    handle @site {
+        reverse_proxy convex-backend:3211
+    }
+    handle {
+        reverse_proxy convex-backend:3210
+    }
+}
+
+# ─────────────────────────── Convex dashboard ───────────────────────────────
+# Sub-subdomain under admin.oknalog.net. Caddy basic auth is the perimeter;
+# the dashboard's own admin-key login still applies inside.
+convex.admin.oknalog.net {
+    basic_auth {
+        {$DASHBOARD_USER} {$DASHBOARD_BCRYPT}
+    }
+    reverse_proxy convex-dashboard:6791
+}

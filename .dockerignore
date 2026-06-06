@@ -1,0 +1,33 @@
+# Local + scratch state — never ships in an image.
+**/node_modules
+**/.next
+**/.turbo
+**/.cache
+**/dist
+**/build
+**/out
+**/.output
+
+# Secrets and certs.
+.env
+.env.*
+!.env.example
+**/*.pem
+certs/
+
+# VCS + editor.
+.git
+.gitignore
+.github
+.vscode
+.idea
+
+# Docs and tooling junk that doesn't affect the build.
+*.md
+LICENSE
+tmp/
+coverage/
+.nvmrc
+
+# CSV / sample data committed by mistake — opt back in per-image if needed.
+nalog.csv

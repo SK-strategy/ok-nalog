@@ -6,7 +6,7 @@ import { Skeleton } from '@tax-assistant/ui'
 
 import { getTelegramApp } from '~/widgets/tma-shell'
 import { useSession } from '~/entities/session'
-import { authClient } from '~/shared/lib/auth-client'
+import { useAuthClient } from '~/shared/lib/auth-client'
 
 /**
  * Silent auth for the Mini App: read `initData` from the Telegram WebView and
@@ -22,6 +22,7 @@ import { authClient } from '~/shared/lib/auth-client'
  *   - explicit error from signInWithMiniApp
  */
 export function TmaAuthGate({ children }: { children: React.ReactNode }) {
+  const authClient = useAuthClient()
   const { me, isAuthenticated, isLoading } = useSession()
   const attempted = useRef(false)
   const [signingIn, setSigningIn] = useState(false)
@@ -59,7 +60,7 @@ export function TmaAuthGate({ children }: { children: React.ReactNode }) {
         setSigningIn(false)
       }
     })()
-  }, [isAuthenticated])
+  }, [isAuthenticated, authClient])
 
   if (error) {
     return (
