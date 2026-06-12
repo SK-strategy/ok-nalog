@@ -173,6 +173,7 @@ const triggers: Triggers<DataModel, typeof schema> = {
         name: string
         image: string | undefined
         telegramUsername: string | undefined
+        telegramId: string
         email: string | undefined
         updatedAt: number
       }> = {}
@@ -184,6 +185,12 @@ const triggers: Triggers<DataModel, typeof schema> = {
       if (newDoc.email !== oldDoc.email) {
         // The TMA link flow swaps the placeholder for a verified real email.
         patch.email = isPlaceholderEmail(newDoc.email) ? undefined : newDoc.email
+      }
+      // Web «Привязать Telegram» stamps telegramId onto an email-born user
+      // (account.create.after hook). Mirror it so the domain identity keying
+      // and the admin UI follow. Never cleared — unlink isn't exposed.
+      if (newDoc.telegramId !== oldDoc.telegramId && newDoc.telegramId) {
+        patch.telegramId = newDoc.telegramId
       }
       if (Object.keys(patch).length === 0) return
       patch.updatedAt = Date.now()
@@ -260,6 +267,13 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>): BetterAuthOptions
         enabled: true,
         trustedProviders: ['telegram', 'telegram-oidc'],
         requireLocalEmailVerified: false,
+        // Explicit linking (web «Привязать Telegram» → linkSocial with the
+        // telegram-oidc provider) compares the provider email against the
+        // session user's email and rejects on mismatch by default. Telegram's
+        // synthetic `${id}@telegram.local` never equals a real email, so the
+        // check must be off. Safe: linking requires an authenticated session
+        // AND completing Telegram's own OAuth — both identities are proven.
+        allowDifferentEmails: true,
       },
     },
     // better-auth only rate-limits when NODE_ENV is production unless told
@@ -305,6 +319,51 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>): BetterAuthOptions
                 accountId: u.telegramId,
                 telegramId: u.telegramId,
               },
+            })
+          },
+        },
+      },
+      account: {
+        create: {
+          // One Telegram identity must map to exactly one auth user — the
+          // whole flow architecture (miniapp lookup by user.telegramId,
+          // domain dedup by telegramId) depends on it. If an email-first
+          // user already opened the TMA, auto-signin minted a separate
+          // telegram-born user; letting them ALSO link that Telegram to the
+          // email account via OIDC would cross-wire the identity (miniapp →
+          // user B, OIDC → user A). Refuse instead: returning false cancels
+          // the create, and the link callback redirects back with
+          // `?error=unable_to_link_account`, which the web UI explains.
+          before: async (account, hookCtx) => {
+            if (!hookCtx) return
+            const a = account as typeof account & { accountId?: string; providerId?: string }
+            if (a.providerId !== 'telegram' && a.providerId !== 'telegram-oidc') return
+            if (!a.accountId) return
+            const owner = await hookCtx.context.adapter.findOne<{ id: string }>({
+              model: 'user',
+              where: [{ field: 'telegramId', value: a.accountId }],
+            })
+            if (owner && owner.id !== a.userId) return false
+          },
+          // Explicit OIDC linking creates only the account row — the user
+          // keeps telegramId = null, and the Mini App resolves people by
+          // that field when no `telegram` account row exists yet. Stamp it
+          // here so the TMA picks the linked account up on first open.
+          // Going through internalAdapter.updateUser (not the raw adapter)
+          // chains into the user.update.after hook above and the domain
+          // trigger mirror.
+          after: async (account, hookCtx) => {
+            if (!hookCtx) return
+            const a = account as typeof account & { accountId?: string; providerId?: string }
+            if (a.providerId !== 'telegram' && a.providerId !== 'telegram-oidc') return
+            if (!a.accountId) return
+            const user = (await hookCtx.context.adapter.findOne({
+              model: 'user',
+              where: [{ field: 'id', value: a.userId }],
+            })) as { id: string; telegramId?: string | null } | null
+            if (!user || user.telegramId) return
+            await hookCtx.context.internalAdapter.updateUser(a.userId, {
+              telegramId: a.accountId,
             })
           },
         },
