@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next'
-import { Manrope } from 'next/font/google'
 import { env } from '~/env'
 
 import { cn } from '@tax-assistant/ui'
@@ -8,6 +7,10 @@ import { Providers } from '~/app/providers'
 import { SiteHeader } from '~/widgets/site-header'
 
 import '~/app/styles.css'
+// Self-hosted Manrope (see fonts.css) — binds `--font-sans-app`, which the
+// shared theme reads via `var(--font-sans-app, var(--font-geist-sans, ...))`.
+// Same wiring as the TMA; keeps the visual language aligned across surfaces.
+import '~/app/fonts.css'
 
 export const metadata: Metadata = {
   title: 'Налоговый помощник',
@@ -27,24 +30,10 @@ export const viewport: Viewport = {
   ],
 }
 
-// Same Manrope wiring as the TMA — exposes `--font-sans-app`, which the
-// shared theme reads via `var(--font-sans-app, var(--font-geist-sans, ...))`.
-// Keeps the visual language aligned across surfaces.
-const manrope = Manrope({
-  subsets: ['latin', 'cyrillic'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-sans-app',
-})
-
 export default function RootLayout(props: { children: React.ReactNode }) {
   return (
     <html lang="ru" suppressHydrationWarning>
-      <body
-        className={cn(
-          'bg-background text-foreground min-h-screen font-sans antialiased',
-          manrope.variable,
-        )}
-      >
+      <body className={cn('bg-background text-foreground min-h-screen font-sans antialiased')}>
         <Providers convexUrl={env.CONVEX_URL} convexSiteUrl={env.CONVEX_SITE_URL}>
           <SiteHeader />
           {props.children}
