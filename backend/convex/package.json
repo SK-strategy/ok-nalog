@@ -9,11 +9,13 @@
     "clean": "git clean -xdf .cache .turbo node_modules",
     "codegen": "pnpm with-env convex codegen",
     "deploy": "pnpm with-env convex deploy",
+    "deploy:prod": "pnpm with-prod-env convex deploy",
     "dev": "pnpm with-env convex dev --typecheck=disable",
     "format": "prettier --check . --ignore-path ../../.gitignore --ignore-path .prettierignore",
     "lint": "eslint --flag unstable_native_nodejs_ts_config",
     "typecheck": "tsc --noEmit",
-    "with-env": "dotenv -e ../../.env --"
+    "with-env": "dotenv -e ../../.env --",
+    "with-prod-env": "dotenv -e ../../.env.prod --"
   },
   "prettier": "@tax-assistant/prettier-config",
   "dependencies": {

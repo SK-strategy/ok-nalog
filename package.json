@@ -1,25 +1,21 @@
 {
   "name": "tax-assistant",
   "private": true,
-  "engines": {
-    "node": "^22.21.0",
-    "pnpm": "^10.19.0"
-  },
-  "packageManager": "pnpm@10.19.0",
   "scripts": {
     "build": "turbo run build",
     "check": "pnpm lint && pnpm lint:fsd && pnpm format && pnpm typecheck",
     "clean": "git clean -xdf node_modules",
     "clean:workspaces": "turbo run clean",
+    "deploy:prod": "bash scripts/deploy.sh",
     "dev": "turbo watch dev --continue",
     "dev:web": "turbo watch dev -F @tax-assistant/web...",
     "format": "turbo run format --continue -- --cache --cache-location .cache/.prettiercache",
     "format:fix": "turbo run format --continue -- --write --cache --cache-location .cache/.prettiercache",
+    "postinstall": "pnpm lint:ws",
     "lint": "turbo run lint --continue -- --cache --cache-location .cache/.eslintcache",
     "lint:fix": "turbo run lint --continue -- --fix --cache --cache-location .cache/.eslintcache",
     "lint:fsd": "steiger ./apps/web/src && steiger ./apps/admin/src && steiger ./apps/tma/src",
     "lint:ws": "pnpm dlx sherif@latest",
-    "postinstall": "pnpm lint:ws",
     "typecheck": "turbo run typecheck",
     "ui-add": "turbo run ui-add"
   },
@@ -33,5 +29,10 @@
     "steiger": "^0.5.6",
     "turbo": "^2.5.8",
     "typescript": "catalog:"
+  },
+  "packageManager": "pnpm@10.19.0",
+  "engines": {
+    "node": "^22.21.0",
+    "pnpm": "^10.19.0"
   }
 }
