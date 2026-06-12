@@ -35,6 +35,7 @@ skip_images=0 skip_convex=0 skip_restart=0 direct=0
 apps=()
 for arg in "$@"; do
   case "$arg" in
+    --) ;; # pnpm forwards the literal separator — ignore it
     --skip-images) skip_images=1 ;;
     --skip-convex) skip_convex=1 ;;
     --skip-restart) skip_restart=1 ;;
@@ -52,6 +53,20 @@ sha="$(git rev-parse --short HEAD)"
 if [ -n "$(git status --porcelain)" ]; then
   echo "⚠ working tree is dirty — images will be tagged $sha but contain uncommitted changes"
 fi
+
+# The path to the VPS regularly flaps with the VPN. Rather than dying mid-
+# deploy, wait out short outages before every remote step (~6 min budget).
+wait_for_host() {
+  for i in $(seq 1 24); do
+    if ssh -o BatchMode=yes -o ConnectTimeout=8 "$DEPLOY_HOST" true 2>/dev/null; then
+      return 0
+    fi
+    echo "   … $DEPLOY_HOST unreachable (try $i/24) — retrying in 15s (VPN flap?)"
+    sleep 15
+  done
+  echo "✗ $DEPLOY_HOST stayed unreachable — fix the network and re-run with --skip-images" >&2
+  exit 1
+}
 
 # ── 1. images ────────────────────────────────────────────────────────────────
 if [ "$skip_images" -eq 0 ]; then
@@ -77,6 +92,7 @@ fi
 # ── 2. compose + caddy config ────────────────────────────────────────────────
 if [ "$skip_restart" -eq 0 ]; then
   echo "── syncing docker-compose.prod.yml + Caddyfile.prod"
+  wait_for_host
   rsync -az docker-compose.prod.yml Caddyfile.prod "$DEPLOY_HOST:$DEPLOY_DIR/"
 fi
 
@@ -93,6 +109,7 @@ fi
 # ── 4. restart + smoke ───────────────────────────────────────────────────────
 if [ "$skip_restart" -eq 0 ]; then
   echo "── restarting ${apps[*]} on $DEPLOY_HOST"
+  wait_for_host
   if [ "$direct" -eq 1 ]; then
     ssh "$DEPLOY_HOST" "cd $DEPLOY_DIR && $COMPOSE up -d ${apps[*]}"
   else
@@ -100,9 +117,13 @@ if [ "$skip_restart" -eq 0 ]; then
   fi
 
   echo "── smoke test"
+  sleep 5 # let the Next.js servers boot before judging — fresh containers 502 for a few seconds
   for url in https://oknalog.net https://admin.oknalog.net https://tma.oknalog.net; do
-    printf '%-28s %s\n' "$url" "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "$url" || echo FAIL)"
+    printf '%-28s %s\n' "$url" \
+      "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 --retry 3 --retry-all-errors \
+        --retry-delay 4 "$url" || echo FAIL)"
   done
+  # Self-hosted Convex answers /version with the literal string "unknown" — that's healthy.
   printf '%-28s %s\n' "api /version" "$(curl -sS --max-time 15 https://api.oknalog.net/version || echo FAIL)"
 fi
 
