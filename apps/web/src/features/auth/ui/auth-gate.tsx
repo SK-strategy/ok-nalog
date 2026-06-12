@@ -4,6 +4,7 @@ import { Skeleton } from '@tax-assistant/ui'
 
 import { useSession } from '~/entities/session'
 
+import { EmailOtpForm } from './email-otp-form'
 import { TelegramLoginButton } from './telegram-login-button'
 
 /** Renders children only for a signed-in user; otherwise prompts to log in. */
@@ -24,9 +25,15 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center">
         <h2 className="text-2xl font-semibold">Вход в личный кабинет</h2>
         <p className="text-muted-foreground text-sm">
-          Авторизуйтесь через Telegram, чтобы продолжить.
+          Войдите через Telegram или получите код на почту.
         </p>
         <TelegramLoginButton />
+        <div className="flex w-full max-w-xs items-center gap-3">
+          <div className="bg-border h-px flex-1" />
+          <span className="text-muted-foreground text-xs uppercase">или</span>
+          <div className="bg-border h-px flex-1" />
+        </div>
+        <EmailOtpForm />
       </div>
     )
   }

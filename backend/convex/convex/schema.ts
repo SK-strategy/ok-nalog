@@ -27,6 +27,9 @@ export default defineSchema({
     telegramUsername: v.optional(v.string()),
     name: v.string(),
     image: v.optional(v.string()),
+    // Real (sign-up or TMA-linked) email only — the synthetic
+    // `${telegramId}@telegram.local` placeholder is never mirrored here.
+    email: v.optional(v.string()),
     role: v.union(v.literal('customer'), v.literal('executor'), v.literal('admin')),
     createdAt: v.number(),
     updatedAt: v.number(),

@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "lib": ["ES2021"],
+    // "dom" is the Convex scaffold default — it's what types the runtime's
+    // fetch/console/Response globals (used by the Resend OTP sender).
+    "lib": ["ES2021", "dom"],
     "moduleResolution": "Bundler",
     "module": "ESNext",
     "strict": true,

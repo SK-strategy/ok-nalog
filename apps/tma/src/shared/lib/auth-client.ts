@@ -3,12 +3,13 @@
 import { createContext, use } from 'react'
 import { convexClient, crossDomainClient } from '@convex-dev/better-auth/client/plugins'
 import { telegramClient } from 'better-auth-telegram/client'
+import { emailOTPClient } from 'better-auth/client/plugins'
 import { createAuthClient } from 'better-auth/react'
 
 export function createAuthClientFor(baseURL: string) {
   return createAuthClient({
     baseURL,
-    plugins: [telegramClient(), convexClient(), crossDomainClient()],
+    plugins: [telegramClient(), emailOTPClient(), convexClient(), crossDomainClient()],
   })
 }
 

@@ -4,7 +4,7 @@ import { createClient } from '@convex-dev/better-auth'
 import { convex, crossDomain } from '@convex-dev/better-auth/plugins'
 import { betterAuth } from 'better-auth'
 import { telegram } from 'better-auth-telegram'
-import { bearer } from 'better-auth/plugins'
+import { bearer, emailOTP } from 'better-auth/plugins'
 
 import type { DataModel } from './_generated/dataModel'
 import { components, internal } from './_generated/api'
@@ -39,6 +39,77 @@ import schema from './betterAuth/schema'
 // at runtime will fail loudly via better-auth's own validation.
 const env = (key: string): string => process.env[key] ?? ''
 
+// Telegram-only identities carry a synthetic `${telegramId}@telegram.local`
+// email (see mapMiniAppDataToUser below). A "real" email is anything else —
+// either set at email sign-up or linked via the TMA change-email flow.
+const isPlaceholderEmail = (email: string) => email.endsWith('@telegram.local')
+
+// OTP delivery via Resend (plain fetch — runs inside better-auth's HTTP
+// action, where fetch is available; no SDK needed). Without RESEND_API_KEY
+// the code is logged instead so the dev loop works without a mail account.
+// NB: better-auth wraps this in runInBackgroundOrAwait, which catches and
+// logs any throw — the client still receives `success: true` (deliberate
+// anti-enumeration). So the throw below is for the function log, not the
+// user; the sign-in/link UIs carry a «код не приходит» hint for this case.
+// Until a domain is verified in Resend, the default onboarding@resend.dev
+// sender can only reach the Resend account owner's own address.
+const OTP_EMAIL_COPY: Record<
+  'sign-in' | 'email-verification' | 'forget-password' | 'change-email',
+  { subject: string; intro: string }
+> = {
+  'sign-in': {
+    subject: 'Код для входа — Налоговый помощник',
+    intro: 'Ваш код для входа:',
+  },
+  'email-verification': {
+    subject: 'Подтверждение почты — Налоговый помощник',
+    intro: 'Ваш код подтверждения почты:',
+  },
+  'forget-password': {
+    subject: 'Сброс пароля — Налоговый помощник',
+    intro: 'Ваш код для сброса пароля:',
+  },
+  'change-email': {
+    subject: 'Привязка почты — Налоговый помощник',
+    intro: 'Ваш код для привязки почты к аккаунту:',
+  },
+}
+
+const sendOtpEmail = async ({
+  email,
+  otp,
+  type,
+}: {
+  email: string
+  otp: string
+  type: 'sign-in' | 'email-verification' | 'forget-password' | 'change-email'
+}) => {
+  const apiKey = process.env.RESEND_API_KEY
+  const from = process.env.RESEND_FROM ?? 'Налоговый помощник <onboarding@resend.dev>'
+  const { subject, intro } = OTP_EMAIL_COPY[type]
+  if (!apiKey) {
+    console.log(`[email-otp] RESEND_API_KEY is not set — ${type} code for ${email}: ${otp}`)
+    return
+  }
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from,
+      to: [email],
+      subject,
+      text: `${intro} ${otp}\n\nКод действует 10 минут. Если вы не запрашивали его — просто проигнорируйте это письмо.`,
+    }),
+  })
+  if (!res.ok) {
+    const body = await res.text()
+    console.error(
+      `[email-otp] Resend rejected the ${type} email to ${email}: ${res.status} ${body}`,
+    )
+    throw new Error(`Failed to send OTP email (${res.status})`)
+  }
+}
+
 // Trigger callbacks run in the app's mutation context (with access to the
 // domain `ctx.db`), fired by the betterAuth component after it writes to its
 // own `user` table. Keep them idempotent — they retry on partial failures.
@@ -64,6 +135,7 @@ const triggers: Triggers<DataModel, typeof schema> = {
             telegramUsername: doc.telegramUsername ?? byTelegram.telegramUsername,
             name: doc.name || byTelegram.name,
             image: doc.image ?? byTelegram.image,
+            email: isPlaceholderEmail(doc.email) ? byTelegram.email : doc.email,
             updatedAt: now,
           })
           return
@@ -85,6 +157,7 @@ const triggers: Triggers<DataModel, typeof schema> = {
         telegramUsername: doc.telegramUsername ?? undefined,
         name: doc.name,
         image: doc.image ?? undefined,
+        email: isPlaceholderEmail(doc.email) ? undefined : doc.email,
         role: 'customer',
         createdAt: now,
         updatedAt: now,
@@ -100,12 +173,17 @@ const triggers: Triggers<DataModel, typeof schema> = {
         name: string
         image: string | undefined
         telegramUsername: string | undefined
+        email: string | undefined
         updatedAt: number
       }> = {}
       if (newDoc.name !== oldDoc.name) patch.name = newDoc.name
       if (newDoc.image !== oldDoc.image) patch.image = newDoc.image ?? undefined
       if (newDoc.telegramUsername !== oldDoc.telegramUsername) {
         patch.telegramUsername = newDoc.telegramUsername ?? undefined
+      }
+      if (newDoc.email !== oldDoc.email) {
+        // The TMA link flow swaps the placeholder for a verified real email.
+        patch.email = isPlaceholderEmail(newDoc.email) ? undefined : newDoc.email
       }
       if (Object.keys(patch).length === 0) return
       patch.updatedAt = Date.now()
@@ -184,6 +262,54 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>): BetterAuthOptions
         requireLocalEmailVerified: false,
       },
     },
+    // better-auth only rate-limits when NODE_ENV is production unless told
+    // otherwise; force it on so the OTP endpoints (3 req/min per IP, from the
+    // emailOTP plugin's own rules) are protected in every deployment. Counters
+    // live in the component's `rateLimit` table — in-memory storage would be
+    // per-isolate and effectively off on Convex.
+    rateLimit: {
+      enabled: true,
+      storage: 'database',
+    },
+    databaseHooks: {
+      user: {
+        update: {
+          // A Telegram-born user who links a real email stops matching the
+          // `${telegramId}@telegram.local` lookup that the OIDC callback uses
+          // to attach to the existing user (account row match is tried first,
+          // email second — see better-auth's findOAuthUser). Without help,
+          // their *first* web "Войти через Telegram" after linking would
+          // create a duplicate auth user. Pre-creating the telegram-oidc
+          // account row here pins every future OIDC sign-in to this user.
+          // Mini App / Login Widget flows are immune — they resolve via the
+          // user.telegramId field, not the email.
+          after: async (user, hookCtx) => {
+            if (!hookCtx) return
+            const u = user as typeof user & { telegramId?: string | null }
+            if (!u.telegramId || !u.emailVerified || isPlaceholderEmail(u.email)) return
+            const existing = await hookCtx.context.adapter.findOne({
+              model: 'account',
+              where: [
+                { field: 'providerId', value: 'telegram-oidc' },
+                { field: 'accountId', value: u.telegramId },
+              ],
+            })
+            if (existing) return
+            // createdAt/updatedAt omitted on purpose — mirrors the telegram
+            // plugin's own account creates, which our schema already allows.
+            await hookCtx.context.adapter.create({
+              model: 'account',
+              data: {
+                userId: u.id,
+                providerId: 'telegram-oidc',
+                accountId: u.telegramId,
+                telegramId: u.telegramId,
+              },
+            })
+          },
+        },
+      },
+    },
     plugins: [
       telegram({
         botToken,
@@ -254,6 +380,25 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>): BetterAuthOptions
               },
             }
           : {}),
+      }),
+      // Passwordless email login for web/admin + the TMA "привязать почту"
+      // flow. Sign-in: send a 6-digit code, verify, session. Unknown emails
+      // sign up as fresh customers (flip `disableSignUp` to restrict email
+      // login to already-linked accounts).
+      //
+      // changeEmail is the linking primitive: requestEmailChange sends the
+      // code to the NEW address while the user stays signed in via Telegram,
+      // and changeEmail applies `email + emailVerified: true` atomically only
+      // after the code checks out (verify-then-change — no window where an
+      // unverified foreign email sits on the account). Taken emails are
+      // silently accepted at request time (anti-enumeration: no email is
+      // sent) and rejected with "Email already in use" at the verify step.
+      emailOTP({
+        otpLength: 6,
+        expiresIn: 600, // matches the «код действует 10 минут» copy above
+        allowedAttempts: 5,
+        changeEmail: { enabled: true },
+        sendVerificationOTP: sendOtpEmail,
       }),
       bearer(),
       // Server side of the cross-domain bridge. Without this, response

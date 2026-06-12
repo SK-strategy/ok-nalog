@@ -4,6 +4,7 @@ import { Skeleton } from '@tax-assistant/ui'
 
 import { useSession } from '~/entities/session'
 
+import { EmailOtpForm } from './email-otp-form'
 import { TelegramLoginButton } from './telegram-login-button'
 
 /** Renders children only for a signed-in user with the admin role. */
@@ -23,8 +24,16 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center">
         <h2 className="text-2xl font-semibold">Панель администратора</h2>
-        <p className="text-muted-foreground text-sm">Войдите через Telegram.</p>
+        <p className="text-muted-foreground text-sm">
+          Войдите через Telegram или по коду из письма.
+        </p>
         <TelegramLoginButton />
+        <div className="flex w-full max-w-xs items-center gap-3">
+          <div className="bg-border h-px flex-1" />
+          <span className="text-muted-foreground text-xs uppercase">или</span>
+          <div className="bg-border h-px flex-1" />
+        </div>
+        <EmailOtpForm />
       </div>
     )
   }

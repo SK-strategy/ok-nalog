@@ -10,6 +10,7 @@ import { formatKopecks, isTerminal } from '@tax-assistant/validators'
 import type { HomeMode } from '~/widgets/mode-switcher'
 import { ModeSwitcher, useHomeMode } from '~/widgets/mode-switcher'
 import { TmaScreen } from '~/widgets/tma-shell'
+import { LinkEmailCard } from '~/features/link-email'
 import { CategorySearchSheet, categoryStyle } from '~/entities/category'
 import { ClientTypeSegmented, useClientType } from '~/entities/client-type'
 import { OrderRow, OrdersList } from '~/entities/order'
@@ -190,6 +191,8 @@ function CustomerHome({ switcher }: { switcher: React.ReactNode }) {
           executorStatus={me?.executor?.status}
           onOpen={() => router.push('/executor')}
         />
+
+        <LinkEmailCard />
       </div>
 
       <CategorySearchSheet

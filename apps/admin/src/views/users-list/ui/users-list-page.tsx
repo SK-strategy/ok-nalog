@@ -42,6 +42,7 @@ export function UsersListPage() {
       (u) =>
         u.name.toLowerCase().includes(needle) ||
         (u.telegramUsername?.toLowerCase().includes(needle) ?? false) ||
+        (u.email?.toLowerCase().includes(needle) ?? false) ||
         u.telegramId.includes(needle),
     )
   }, [users, search])
@@ -102,6 +103,7 @@ export function UsersListPage() {
                   onToggle={() => toggle('role')}
                 />
               </TableHead>
+              <TableHead>Почта</TableHead>
               <TableHead className="text-right">
                 <SortHeader
                   label="Заявок"
@@ -135,7 +137,7 @@ export function UsersListPage() {
             {users === undefined && <UsersSkeleton />}
             {users && sorted.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6}>
+                <TableCell colSpan={7}>
                   <EmptyState
                     icon={<Users className="size-8" />}
                     title="Пользователи не найдены"
@@ -152,6 +154,7 @@ export function UsersListPage() {
                 <TableCell>
                   <span className="text-sm">{ROLE_LABEL[user.role]}</span>
                 </TableCell>
+                <TableCell className="text-muted-foreground text-sm">{user.email ?? '—'}</TableCell>
                 <TableCell className="text-right tabular-nums">{user.orderCount}</TableCell>
                 <TableCell className="text-right tabular-nums">
                   {user.completedOrderCount}
@@ -182,7 +185,7 @@ function UsersSkeleton() {
     <>
       {Array.from({ length: 5 }).map((_, i) => (
         <TableRow key={i}>
-          {Array.from({ length: 6 }).map((__, j) => (
+          {Array.from({ length: 7 }).map((__, j) => (
             <TableCell key={j}>
               <Skeleton className="h-5 w-24" />
             </TableCell>
