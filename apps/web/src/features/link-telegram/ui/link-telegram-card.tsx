@@ -58,7 +58,7 @@ export function LinkTelegramCard() {
 
   // Strip the ?error= param so a refresh starts clean (state already holds it).
   useEffect(() => {
-    if (searchParams.get('error')) router.replace('/orders')
+    if (searchParams.get('error')) router.replace('/profile')
   }, [searchParams, router])
 
   if (!me || me.user.telegramId) return null
@@ -71,8 +71,8 @@ export function LinkTelegramCard() {
         provider: 'telegram-oidc',
         // Absolute URLs on purpose — crossDomain rewrites relative paths
         // against its single configured siteUrl.
-        callbackURL: `${window.location.origin}/orders`,
-        errorCallbackURL: `${window.location.origin}/orders`,
+        callbackURL: `${window.location.origin}/profile`,
+        errorCallbackURL: `${window.location.origin}/profile`,
       })
       if (err) {
         setError('Не получилось привязать Telegram. Попробуйте ещё раз.')

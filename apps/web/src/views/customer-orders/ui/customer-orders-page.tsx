@@ -9,8 +9,6 @@ import { ChevronRight, Clock, Plus, Search, Sparkles, XCircle } from 'lucide-rea
 import { formatKopecks } from '@tax-assistant/validators'
 
 import { AuthGate } from '~/features/auth'
-import { LinkEmailCard } from '~/features/link-email'
-import { LinkTelegramCard } from '~/features/link-telegram'
 import { CategorySearchSheet, categoryStyle } from '~/entities/category'
 import { ClientTypeSegmented, useClientType } from '~/entities/client-type'
 import { OrderRow, OrdersList } from '~/entities/order'
@@ -165,11 +163,6 @@ function Dashboard() {
       </section>
 
       <BecomeExecutorCard executorStatus={me?.executor?.status} />
-
-      <section className="grid gap-3 sm:grid-cols-2">
-        <LinkEmailCard />
-        <LinkTelegramCard />
-      </section>
 
       <CategorySearchSheet
         open={searchOpen}

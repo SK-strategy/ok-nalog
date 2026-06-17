@@ -10,6 +10,7 @@ import { SignOutButton, TelegramLoginButton } from '~/features/auth'
 import { MODE_HINT, MODE_LABEL, MODE_ROUTE, useHomeMode } from '~/features/switch-mode'
 import { useSession } from '~/entities/session'
 import { cn } from '~/shared/lib'
+import { UserAvatar } from '~/shared/ui/user-avatar'
 
 /**
  * Site-wide header. Sticky at the top of every page.
@@ -64,7 +65,14 @@ export function SiteHeader() {
                   Кабинет эксперта
                 </NavLink>
               )}
-              <span className="text-text-soft hidden text-xs md:inline">{me.user.name}</span>
+              <Link
+                href="/profile"
+                aria-label="Профиль"
+                className="flex items-center gap-2 transition-opacity hover:opacity-80"
+              >
+                <span className="text-text-soft hidden text-xs md:inline">{me.user.name}</span>
+                <UserAvatar src={me.user.image} name={me.user.name} className="size-7 text-xs" />
+              </Link>
               <SignOutButton />
             </>
           ) : (
@@ -184,11 +192,17 @@ function MobileMenu({
               />
             ))}
           </div>
-          <div
-            className="border-separator/60 flex items-center justify-between gap-2 border-t px-3
+          <Link
+            href="/profile"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="border-separator/60 hover:bg-secondary flex items-center gap-3 border-t px-3
               py-2.5"
           >
-            <span className="text-text-soft truncate text-[13px]">{userName}</span>
+            <span className="text-foreground text-[14px] font-semibold">Профиль</span>
+            <span className="text-text-soft truncate text-[12px]">{userName}</span>
+          </Link>
+          <div className="border-separator/60 flex items-center justify-end border-t px-3 py-2">
             <div onClick={() => setOpen(false)}>
               <SignOutButton />
             </div>

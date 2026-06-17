@@ -20,6 +20,7 @@ import { formatKopecks, isTerminal } from '@tax-assistant/validators'
 
 import type { HomeMode } from '~/widgets/mode-switcher'
 import { ModeSwitcher } from '~/widgets/mode-switcher'
+import { ProfileButton } from '~/widgets/profile-button'
 import { TmaScreen } from '~/widgets/tma-shell'
 import type { ExecutorApplicationInitial } from '~/features/executor-application'
 import { AvailableOrderRow, AvailableOrderSheet } from '~/features/claim-order'
@@ -241,7 +242,12 @@ function ApprovedCabinet({
   return (
     <TmaScreen
       title="Кабинет эксперта"
-      rightAction={<ModeSwitcher current="executor" allowed={allowed} />}
+      rightAction={
+        <div className="flex items-center gap-2">
+          <ModeSwitcher current="executor" allowed={allowed} />
+          <ProfileButton />
+        </div>
+      }
     >
       <div className="flex flex-col gap-5 pt-3 pb-2">
         {/* PRIMARY: orders waiting for an executor — the reason this page

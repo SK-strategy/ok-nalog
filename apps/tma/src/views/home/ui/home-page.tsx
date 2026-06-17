@@ -9,8 +9,8 @@ import { formatKopecks, isTerminal } from '@tax-assistant/validators'
 
 import type { HomeMode } from '~/widgets/mode-switcher'
 import { ModeSwitcher, useHomeMode } from '~/widgets/mode-switcher'
+import { ProfileButton } from '~/widgets/profile-button'
 import { TmaScreen } from '~/widgets/tma-shell'
-import { LinkEmailCard } from '~/features/link-email'
 import { CategorySearchSheet, categoryStyle } from '~/entities/category'
 import { ClientTypeSegmented, useClientType } from '~/entities/client-type'
 import { OrderRow, OrdersList } from '~/entities/order'
@@ -108,7 +108,7 @@ function CustomerHome({ switcher }: { switcher: React.ReactNode }) {
       title="Налоговый помощник"
       back={false}
       rightAction={
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             aria-label="Поиск"
@@ -118,6 +118,7 @@ function CustomerHome({ switcher }: { switcher: React.ReactNode }) {
             <Search className="size-[22px]" />
           </button>
           {switcher}
+          <ProfileButton />
         </div>
       }
       mainButton={
@@ -191,8 +192,6 @@ function CustomerHome({ switcher }: { switcher: React.ReactNode }) {
           executorStatus={me?.executor?.status}
           onOpen={() => router.push('/executor')}
         />
-
-        <LinkEmailCard />
       </div>
 
       <CategorySearchSheet
@@ -221,7 +220,16 @@ function AdminHome({ switcher }: { switcher: React.ReactNode }) {
   const { needsAction, inFlight, done } = useMemo(() => bucketAdmin(orders ?? []), [orders])
 
   return (
-    <TmaScreen title="Админ-панель" back={false} rightAction={switcher}>
+    <TmaScreen
+      title="Админ-панель"
+      back={false}
+      rightAction={
+        <div className="flex items-center gap-2">
+          {switcher}
+          <ProfileButton />
+        </div>
+      }
+    >
       <div className="flex flex-col gap-5 pt-3 pb-2">
         {orders === undefined ? (
           <OrdersSkeleton />

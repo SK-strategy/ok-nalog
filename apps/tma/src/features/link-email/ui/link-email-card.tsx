@@ -29,7 +29,7 @@ export function LinkEmailCard() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="bg-card mx-4 flex items-center gap-3 rounded-2xl p-4 text-left transition-opacity
+        className="bg-card flex items-center gap-3 rounded-2xl p-4 text-left transition-opacity
           active:opacity-80"
       >
         <div
