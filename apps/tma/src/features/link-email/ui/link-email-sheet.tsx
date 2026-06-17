@@ -57,7 +57,8 @@ export function LinkEmailSheet({
         {form.step === 'otp' && (
           <>
             <p className="text-text-soft text-sm leading-relaxed">
-              Отправили код на <span className="text-foreground font-medium">{form.email}</span>
+              {form.mode === 'merge' ? 'Код для объединения отправлен на ' : 'Отправили код на '}
+              <span className="text-foreground font-medium">{form.email}</span>
             </p>
             <input
               inputMode="numeric"
@@ -76,7 +77,11 @@ export function LinkEmailSheet({
               disabled={form.pending || form.otp.trim().length < 6}
               onClick={() => void form.confirm()}
             >
-              {form.pending ? 'Проверяем…' : 'Подтвердить'}
+              {form.pending
+                ? 'Проверяем…'
+                : form.mode === 'merge'
+                  ? 'Подтвердить и объединить'
+                  : 'Подтвердить'}
             </Button>
             <div className="text-hint flex items-center justify-between text-xs">
               <button type="button" className="p-1" onClick={form.reset}>
@@ -91,18 +96,33 @@ export function LinkEmailSheet({
                 {form.cooldown > 0 ? `Отправить ещё раз (${form.cooldown}с)` : 'Отправить ещё раз'}
               </button>
             </div>
-            <p className="text-hint text-xs leading-relaxed">
-              Код не приходит? Проверьте «Спам». Если письма всё нет — возможно, эта почта уже
-              привязана к другому аккаунту.
-            </p>
+            {form.mode === 'change' && (
+              <button
+                type="button"
+                disabled={form.pending}
+                onClick={() => void form.startMerge()}
+                className="text-primary text-xs leading-relaxed disabled:opacity-50"
+              >
+                Код не приходит? Возможно, на эту почту уже есть аккаунт — объединить с текущим.
+              </button>
+            )}
           </>
         )}
 
         {form.step === 'done' && (
           <>
             <p className="text-foreground text-sm leading-relaxed">
-              Готово — почта <span className="font-medium">{form.email}</span> привязана. Теперь по
-              ней можно входить в веб-версию: запросите код на странице входа.
+              {form.mode === 'merge' ? (
+                <>
+                  Готово — аккаунт с почтой <span className="font-medium">{form.email}</span>{' '}
+                  объединён с текущим. Все обращения теперь в одном профиле.
+                </>
+              ) : (
+                <>
+                  Готово — почта <span className="font-medium">{form.email}</span> привязана. Теперь
+                  по ней можно входить в веб-версию: запросите код на странице входа.
+                </>
+              )}
             </p>
             <Button className="w-full" onClick={onClose}>
               Понятно

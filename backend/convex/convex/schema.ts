@@ -35,7 +35,42 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index('by_auth_user', ['authUserId'])
-    .index('by_telegram', ['telegramId']),
+    .index('by_telegram', ['telegramId'])
+    .index('by_email', ['email']),
+
+  // ── Account-merge scratch tables ──────────────────────────────────────────
+  // One person can accumulate two identities (a Telegram-born auth user from a
+  // silent TMA auto-signin AND an email-born one from web sign-up) before ever
+  // linking them. Linking then collides, and these short-lived rows carry the
+  // "prove dual control → merge" handshake. See `merge.ts`.
+  //
+  // Web «Привязать Telegram»: the OAuth callback's account-create guard refuses
+  // the cross-wire and drops a candidate here (survivor = the email session
+  // user, duplicate = the Telegram id just OAuth-proven). `requestSelfMerge`
+  // consumes it.
+  mergeCandidates: defineTable({
+    survivorAuthUserId: v.string(),
+    duplicateTelegramId: v.string(),
+    createdAt: v.number(),
+  }).index('by_survivor', ['survivorAuthUserId']),
+
+  // TMA/web «Привязать почту» onto a taken email: a 6-digit code sent to that
+  // email proves the Telegram session user also controls the email account, so
+  // the two profiles can merge (survivor = the Telegram session user).
+  mergeEmailOtps: defineTable({
+    survivorAuthUserId: v.string(),
+    duplicateUserId: v.id('users'),
+    email: v.string(),
+    code: v.string(),
+    attempts: v.number(), // failed guesses against the current code
+    // Anti-brute-force: failed guesses summed across resends (a resend mints a
+    // fresh code but must NOT hand the attacker a fresh budget), and the last
+    // send time for a server-side resend cooldown. Without these, the 5-attempt
+    // cap resets every resend → a 6-digit code is brute-forceable.
+    cumulativeAttempts: v.number(),
+    lastSentAt: v.number(),
+    expiresAt: v.number(),
+  }).index('by_survivor', ['survivorAuthUserId']),
 
   // ── Catalogue (admin-managed, seedable) ───────────────────────────────────
   // Top-level thematic groupings ("Налоговые проверки", "Основные налоги" …).

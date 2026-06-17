@@ -331,9 +331,16 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>): BetterAuthOptions
           // user already opened the TMA, auto-signin minted a separate
           // telegram-born user; letting them ALSO link that Telegram to the
           // email account via OIDC would cross-wire the identity (miniapp →
-          // user B, OIDC → user A). Refuse instead: returning false cancels
-          // the create, and the link callback redirects back with
-          // `?error=unable_to_link_account`, which the web UI explains.
+          // user B, OIDC → user A). Refuse the raw link.
+          //
+          // But this collision IS the "same human, two accounts" case the
+          // merge tooling exists for. Before refusing, drop a merge candidate
+          // (the email session user S + the Telegram id D just OAuth-proved)
+          // so the web client can offer «это мой аккаунт — объединить», which
+          // calls merge.requestSelfMerge. `ctx` here is the closure ctx from
+          // createAuthOptions — at OAuth-callback time it's the httpAction ctx
+          // (has runMutation; registerRoutesLazy threads it). The runMutation
+          // commits independently of this hook returning false.
           before: async (account, hookCtx) => {
             if (!hookCtx) return
             const a = account as typeof account & { accountId?: string; providerId?: string }
@@ -343,7 +350,19 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>): BetterAuthOptions
               model: 'user',
               where: [{ field: 'telegramId', value: a.accountId }],
             })
-            if (owner && owner.id !== a.userId) return false
+            if (owner && owner.id !== a.userId) {
+              if ('runMutation' in ctx) {
+                await (
+                  ctx as unknown as {
+                    runMutation: (ref: unknown, args: unknown) => Promise<unknown>
+                  }
+                ).runMutation(internal.merge.recordMergeCandidate, {
+                  survivorAuthUserId: a.userId,
+                  duplicateTelegramId: a.accountId,
+                })
+              }
+              return false
+            }
           },
           // Explicit OIDC linking creates only the account row — the user
           // keeps telegramId = null, and the Mini App resolves people by
@@ -357,10 +376,13 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>): BetterAuthOptions
             const a = account as typeof account & { accountId?: string; providerId?: string }
             if (a.providerId !== 'telegram' && a.providerId !== 'telegram-oidc') return
             if (!a.accountId) return
-            const user = (await hookCtx.context.adapter.findOne({
+            const user = await hookCtx.context.adapter.findOne<{
+              id: string
+              telegramId?: string | null
+            }>({
               model: 'user',
               where: [{ field: 'id', value: a.userId }],
-            })) as { id: string; telegramId?: string | null } | null
+            })
             if (!user || user.telegramId) return
             await hookCtx.context.internalAdapter.updateUser(a.userId, {
               telegramId: a.accountId,
