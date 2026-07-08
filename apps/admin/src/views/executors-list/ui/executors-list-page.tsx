@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useQuery } from 'convex/react'
-import { UserSquare2 } from 'lucide-react'
+import { PencilLine, UserSquare2 } from 'lucide-react'
 
 import { cn } from '@tax-assistant/ui'
 import { Skeleton } from '@tax-assistant/ui/skeleton'
@@ -31,7 +31,7 @@ import {
   UserCell,
 } from '~/shared/ui'
 
-type StatusFilter = 'pending' | 'approved' | 'rejected' | 'all'
+type StatusFilter = 'pending' | 'changes' | 'approved' | 'rejected' | 'all'
 
 interface ExecutorRow {
   _id: string
@@ -39,6 +39,7 @@ interface ExecutorRow {
   fullName: string
   balance: number
   status: 'pending' | 'approved' | 'rejected'
+  hasPendingChanges: boolean
   createdAt: number
   reviewedAt?: number
   assignedOrderCount: number
@@ -56,6 +57,7 @@ type SortColumn = 'fullName' | 'status' | 'balance' | 'createdAt' | 'completedOr
 
 const TABS: { value: StatusFilter; label: string }[] = [
   { value: 'pending', label: 'На рассмотрении' },
+  { value: 'changes', label: 'С изменениями' },
   { value: 'approved', label: 'Одобренные' },
   { value: 'rejected', label: 'Отклонённые' },
   { value: 'all', label: 'Все' },
@@ -65,18 +67,25 @@ export function ExecutorsListPage() {
   const { isAuthenticated } = useSession()
   const searchParams = useSearchParams()
   const status = (searchParams.get('status') as StatusFilter | null) ?? 'pending'
-  const validStatus: StatusFilter = (['pending', 'approved', 'rejected', 'all'] as const).includes(
-    status,
-  )
+  const validStatus: StatusFilter = (
+    ['pending', 'changes', 'approved', 'rejected', 'all'] as const
+  ).includes(status)
     ? status
     : 'pending'
 
-  const executors = useQuery(
+  // «С изменениями» isn't a stored status — it filters approved profiles that
+  // carry a pending revision, so it fetches the full list and narrows client-
+  // side (same as «Все»).
+  const usesStatusIndex = validStatus !== 'all' && validStatus !== 'changes'
+  const rawExecutors = useQuery(
     api.executors.adminListAll,
-    isAuthenticated ? (validStatus === 'all' ? {} : { status: validStatus }) : 'skip',
+    isAuthenticated ? (usesStatusIndex ? { status: validStatus } : {}) : 'skip',
   ) as ExecutorRow[] | undefined
+  const executors =
+    validStatus === 'changes' ? rawExecutors?.filter((r) => r.hasPendingChanges) : rawExecutors
 
   const pendingCount = useQuery(api.executors.pendingCount, isAuthenticated ? {} : 'skip')
+  const changesCount = useQuery(api.executors.pendingChangesCount, isAuthenticated ? {} : 'skip')
 
   const accessors = useMemo(
     () => ({
@@ -100,7 +109,11 @@ export function ExecutorsListPage() {
       {TABS.map((tab) => {
         const active = tab.value === validStatus
         const badge =
-          tab.value === 'pending' && pendingCount !== undefined ? pendingCount : undefined
+          tab.value === 'pending'
+            ? pendingCount
+            : tab.value === 'changes'
+              ? changesCount
+              : undefined
         return (
           <Link
             key={tab.value}
@@ -218,7 +231,18 @@ export function ExecutorsListPage() {
                   </Link>
                 </TableCell>
                 <TableCell>
-                  <ExecutorStatusBadge status={row.status} />
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <ExecutorStatusBadge status={row.status} />
+                    {row.hasPendingChanges && (
+                      <span
+                        className="bg-status-pay-bg text-status-pay inline-flex items-center gap-1
+                          rounded-full px-2 py-0.5 text-[11px] font-medium"
+                      >
+                        <PencilLine className="size-3" />
+                        Правки
+                      </span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
                   {formatKopecks(row.balance)}

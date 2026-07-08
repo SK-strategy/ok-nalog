@@ -1,10 +1,10 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useQuery } from 'convex/react'
-import { ChevronRight, Clock, Plus, Search, Sparkles, XCircle } from 'lucide-react'
+import { ChevronRight, Clock, Plus, Search, XCircle } from 'lucide-react'
 
 import { formatKopecks } from '@tax-assistant/validators'
 
@@ -55,8 +55,6 @@ function Dashboard() {
   const orders = useQuery(api.orders.myOrders, isAuthenticated ? {} : 'skip')
   const draft = useQuery(api.drafts.myDraft, isAuthenticated ? {} : 'skip')
 
-  const [searchOpen, setSearchOpen] = useState(false)
-
   const previewOrders = useMemo(() => (orders ?? []).slice(0, HOME_ORDERS_LIMIT), [orders])
   const categoryById = useMemo(
     () => new Map((allCategories ?? []).map((c) => [c._id, c])),
@@ -88,14 +86,21 @@ function Dashboard() {
               Выберите категорию или продолжите с обращениями ниже.
             </p>
           </div>
-          <button
-            type="button"
-            aria-label="Поиск по категориям"
-            className="text-primary hover:bg-secondary -mr-2 rounded-full p-2"
-            onClick={() => setSearchOpen(true)}
-          >
-            <Search className="size-5" />
-          </button>
+          <CategorySearchSheet
+            clientType={clientType}
+            onSelect={(c) => openCategory(c._id)}
+            align="end"
+            trigger={
+              <button
+                type="button"
+                aria-label="Поиск по категориям"
+                className="text-primary hover:bg-secondary data-[state=open]:bg-secondary -mr-2
+                  rounded-full p-2"
+              >
+                <Search className="size-5" />
+              </button>
+            }
+          />
         </div>
 
         <Link
@@ -163,14 +168,6 @@ function Dashboard() {
       </section>
 
       <BecomeExecutorCard executorStatus={me?.executor?.status} />
-
-      <CategorySearchSheet
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        onSelect={(c) => openCategory(c._id)}
-        clientType={clientType}
-        title="Поиск по категориям"
-      />
     </>
   )
 }
@@ -220,7 +217,11 @@ function BecomeExecutorCard({
 }: {
   executorStatus: 'pending' | 'approved' | 'rejected' | undefined
 }) {
-  if (executorStatus === 'approved') return null
+  // Registration is invite-only: the "Стать экспертом" CTA is no longer
+  // advertised on the customer home — the executor cabinet/registration link
+  // is shared by an admin. Users who have already applied still see the
+  // status of their анкета so they aren't stranded.
+  if (executorStatus !== 'pending' && executorStatus !== 'rejected') return null
 
   const config =
     executorStatus === 'pending'
@@ -231,28 +232,20 @@ function BecomeExecutorCard({
           body: 'Администратор рассматривает вашу заявку. Откройте, чтобы посмотреть, что отправили.',
           cta: 'Открыть',
         }
-      : executorStatus === 'rejected'
-        ? {
-            icon: <XCircle className="size-5" strokeWidth={1.8} />,
-            tone: 'rejected' as const,
-            title: 'Анкета не прошла проверку',
-            body: 'Поправьте анкету и отправьте её на повторное рассмотрение.',
-            cta: 'Поправить',
-          }
-        : {
-            icon: <Sparkles className="size-5" strokeWidth={1.8} />,
-            tone: 'primary' as const,
-            title: 'Стать экспертом',
-            body: 'Консультируйте по своей теме и получайте вознаграждение. Несколько минут на анкету.',
-            cta: 'Подать анкету',
-          }
+      : {
+          icon: <XCircle className="size-5" strokeWidth={1.8} />,
+          tone: 'rejected' as const,
+          title: 'Анкета не прошла проверку',
+          body: 'Поправьте анкету и отправьте её на повторное рассмотрение.',
+          cta: 'Поправить',
+        }
 
+  // `tone` is only ever 'pending' | 'rejected' here (other statuses return
+  // null above), so this is an exhaustive binary choice.
   const toneClasses =
     config.tone === 'rejected'
       ? 'bg-destructive/10 text-destructive'
-      : config.tone === 'pending'
-        ? 'bg-status-pay-bg text-status-pay'
-        : 'bg-primary-soft text-primary'
+      : 'bg-status-pay-bg text-status-pay'
 
   return (
     <Link

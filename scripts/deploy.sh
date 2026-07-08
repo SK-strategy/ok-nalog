@@ -19,13 +19,13 @@
 #   scripts/deploy.sh --direct         # no registry: save/load images over SSH
 #
 # Overrides via env:
-#   DEPLOY_HOST=deploy@185.103.102.210  DEPLOY_DIR=/opt/tax-assistant
+#   DEPLOY_HOST=deploy@45.145.13.114    DEPLOY_DIR=/opt/tax-assistant
 #   REGISTRY=ghcr.io/netosha            PLATFORM=linux/amd64
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-DEPLOY_HOST="${DEPLOY_HOST:-deploy@185.103.102.210}"
+DEPLOY_HOST="${DEPLOY_HOST:-deploy@45.145.13.114}"
 DEPLOY_DIR="${DEPLOY_DIR:-/opt/tax-assistant}"
 REGISTRY="${REGISTRY:-ghcr.io/netosha}"
 PLATFORM="${PLATFORM:-linux/amd64}"
@@ -70,6 +70,11 @@ wait_for_host() {
 
 # ── 1. images ────────────────────────────────────────────────────────────────
 if [ "$skip_images" -eq 0 ]; then
+  if ! docker version >/dev/null 2>&1; then
+    echo "✗ docker unavailable. On WSL2 the /usr/bin/docker symlink dangles when" >&2
+    echo "  Docker Desktop is stopped — start it. Or ship without rebuilding: --skip-images." >&2
+    exit 1
+  fi
   if [ "$direct" -eq 1 ]; then output=--load; else output=--push; fi
   for app in "${apps[@]}"; do
     echo "── building $app ($sha, $PLATFORM, $output)"
@@ -102,8 +107,36 @@ if [ "$skip_convex" -eq 0 ]; then
     echo "✗ .env.prod not found at repo root — required for convex deploy (see DEPLOY.md, layer C)" >&2
     exit 1
   fi
+  # The self-hosted backend is a single-core VPS. Convex's push-time module
+  # analysis constructs the whole better-auth instance (createApi → 5 plugins)
+  # and is CPU-bound against a fixed 4s budget, so any contention on that one
+  # core — the --direct image load above, a Next.js SSR burst, postgres — tips
+  # it over and the push rejects with:
+  #   InvalidModules: … Function execution timed out (maximum duration: 4s)
+  # It's transient and the push is atomic (a rejected analyze applies nothing),
+  # so retry. Deterministic failures (schema, typecheck, auth config) lack that
+  # signature and fail fast on the first attempt.
   echo "── deploying Convex functions"
-  (cd backend/convex && pnpm with-prod-env npx convex deploy --yes)
+  convex_log="$(mktemp)"
+  for attempt in 1 2 3 4 5; do
+    if (cd backend/convex && pnpm with-prod-env npx convex deploy --yes) 2>&1 | tee "$convex_log"; then
+      break
+    fi
+    if ! grep -q 'Function execution timed out' "$convex_log"; then
+      echo "✗ convex deploy failed for a non-transient reason (see above) — not retrying" >&2
+      rm -f "$convex_log"
+      exit 1
+    fi
+    if [ "$attempt" -eq 5 ]; then
+      echo "✗ convex deploy kept hitting the 4s analyze timeout after 5 tries — the VPS is overloaded." >&2
+      echo "  Re-run when the box is idle, or ship images only with --skip-convex and push functions separately." >&2
+      rm -f "$convex_log"
+      exit 1
+    fi
+    echo "   … analyze timed out under load (attempt $attempt/5) — retrying in 10s (single-core VPS contention)"
+    sleep 10
+  done
+  rm -f "$convex_log"
 fi
 
 # ── 4. restart + smoke ───────────────────────────────────────────────────────

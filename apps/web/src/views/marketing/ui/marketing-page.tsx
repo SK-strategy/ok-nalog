@@ -54,17 +54,12 @@ export function MarketingPage() {
           в&nbsp;анонимном чате.
         </p>
         {me ? (
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button asChild size="lg">
-              <Link href="/orders">
-                Мои обращения
-                <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href="/executor">Кабинет эксперта</Link>
-            </Button>
-          </div>
+          <Button asChild size="lg">
+            <Link href="/orders">
+              Мои обращения
+              <ArrowRight className="size-4" />
+            </Link>
+          </Button>
         ) : (
           <TelegramLoginButton />
         )}

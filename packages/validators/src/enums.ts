@@ -20,8 +20,10 @@ export const ORDER_STATUSES = [
   'paid',
   'assigned',
   'in_progress',
+  'under_review',
   'answered',
   'completed',
+  'rated',
   'cancelled',
 ] as const
 export const orderStatusSchema = z.enum(ORDER_STATUSES)

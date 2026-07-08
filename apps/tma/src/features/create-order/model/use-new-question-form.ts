@@ -17,7 +17,7 @@ import { useDebouncedEffect } from '../lib/use-debounced-effect'
 type Category = Doc<'categories'>
 
 const MIN_CHARS = 30
-const MAX_CHARS = 2000
+const MAX_CHARS = 5000
 const DRAFT_DEBOUNCE_MS = 700
 
 export interface NewQuestionFormController {

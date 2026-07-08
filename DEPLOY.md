@@ -4,7 +4,7 @@ End-to-end bootstrap for a fresh VPS. Run top to bottom on the first deploy; lat
 step 8 (push images, restart containers).
 
 The stack: Caddy (TLS) → Next.js apps + Convex self-hosted backend + Postgres. Five public
-hostnames, all on `185.103.102.210`.
+hostnames, all on `45.145.13.114`.
 
 | Hostname                      | Container                      | What it serves                             |
 | ----------------------------- | ------------------------------ | ------------------------------------------ |
@@ -36,9 +36,9 @@ authenticated.
 
 ## Prerequisites
 
-- VPS reachable at `185.103.102.210`. Root SSH initially; will switch to key-only.
+- VPS reachable at `45.145.13.114`. Root SSH initially; will switch to key-only.
 - DNS for `oknalog.net` under your control. Six A records required: `@`, `www`, `admin`, `tma`,
-  `api`, `convex.admin` — all → `185.103.102.210`.
+  `api`, `convex.admin` — all → `45.145.13.114`.
 - GitHub PAT with `write:packages` (laptop, for `docker push`) and a second PAT with `read:packages`
   (VPS, for `docker pull`).
 - BotFather bot token. OIDC client_id/secret are optional at first boot — Mini App + Login Widget
@@ -77,17 +77,22 @@ baked in; the same image runs in any environment.
 SSH in as root once, then drop a deploy user + lock down access.
 
 ```bash
-ssh root@185.103.102.210
+ssh root@45.145.13.114
 
-# Install Docker Engine + Compose plugin (Debian/Ubuntu)
-apt update && apt install -y ca-certificates curl gnupg ufw
-install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-chmod a+r /etc/apt/keyrings/docker.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo $VERSION_CODENAME) stable" \
-  > /etc/apt/sources.list.d/docker.list
-apt update
-apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+# Install Docker + Compose v2 from Ubuntu's own repos. Do NOT use Docker's
+# download.docker.com repo on a brand-new Ubuntu release — it lags new codenames
+# by weeks, so the apt line 404s on e.g. `resolute` (26.04). Ubuntu's docker.io +
+# docker-compose-v2 are current enough to run this stack.
+export DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a
+apt update && apt install -y docker.io docker-compose-v2 ufw openssl
+systemctl enable --now docker
+docker --version && docker compose version   # sanity: both must print
+
+# Swap — this stack runs ~7 containers; on a 1-2 GB box it OOM-kills without it.
+# Skip if the VPS already has >= 4 GB RAM.
+fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+grep -q /swapfile /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+echo 'vm.swappiness=10' > /etc/sysctl.d/99-swappiness.conf && sysctl --system >/dev/null
 
 # Firewall
 ufw allow 22/tcp
@@ -114,7 +119,7 @@ systemctl restart sshd
 Now switch to the deploy user for everything that follows:
 
 ```bash
-ssh deploy@185.103.102.210
+ssh deploy@45.145.13.114
 ```
 
 Authenticate the VPS Docker to GHCR so it can pull private images:
@@ -133,9 +138,9 @@ sudo mkdir -p /opt/tax-assistant && sudo chown deploy:deploy /opt/tax-assistant
 cd /opt/tax-assistant
 
 # From your laptop (rsync the three files):
-rsync deploy@185.103.102.210:/dev/null /dev/null  # warm SSH
+rsync deploy@45.145.13.114:/dev/null /dev/null  # warm SSH
 rsync docker-compose.prod.yml Caddyfile.prod .env.prod.example \
-      deploy@185.103.102.210:/opt/tax-assistant/
+      deploy@45.145.13.114:/opt/tax-assistant/
 
 # Back on VPS:
 cd /opt/tax-assistant
@@ -197,15 +202,15 @@ pnpm with-prod-env npx convex env set JWKS '[]'
 # 2. First deploy. Pushes schema + functions, including jwks:generate.
 pnpm with-prod-env npx convex deploy
 
-# 3. Run jwks:generate, pipe its stdout straight into the env var.
-#    --no-push: don't redeploy first. 2>/dev/null: drop the "Function executed"
-#    banner so it doesn't poison the JWKS value.
-pnpm with-prod-env npx convex run jwks:generate --no-push 2>/dev/null \
-  | pnpm with-prod-env npx convex env set JWKS
+# 3. Generating the REAL JWKS is DEFERRED to the end of Step 6. jwks:generate
+#    builds the better-auth instance, and current better-auth hard-throws
+#    "You are using the default secret" when BETTER_AUTH_SECRET isn't set —
+#    which it isn't yet. Set the deployment env (Step 6) first; the generate
+#    command lives at the bottom of Step 6.
 ```
 
-After step 3, both `convex()` (signing side) and `getAuthConfigProvider()` (verification side) have
-the same keypair as a static document.
+Once the real JWKS is set (end of Step 6), both `convex()` (signing side) and
+`getAuthConfigProvider()` (verification side) share the same keypair as a static document.
 
 ---
 
@@ -216,7 +221,7 @@ Still from your laptop, still in `backend/convex/`:
 ```bash
 pnpm with-prod-env npx convex env set BETTER_AUTH_SECRET "$(openssl rand -hex 32)"
 pnpm with-prod-env npx convex env set TELEGRAM_BOT_TOKEN <from BotFather>
-pnpm with-prod-env npx convex env set NEXT_PUBLIC_TELEGRAM_BOT_USERNAME tax_assistant_testbot
+pnpm with-prod-env npx convex env set NEXT_PUBLIC_TELEGRAM_BOT_USERNAME Oknalog_net_bot
 
 pnpm with-prod-env npx convex env set WEB_ORIGIN   https://oknalog.net
 pnpm with-prod-env npx convex env set ADMIN_ORIGIN https://admin.oknalog.net
@@ -233,7 +238,15 @@ pnpm with-prod-env npx convex env set TELEGRAM_OIDC_CLIENT_SECRET <from BotFathe
 pnpm with-prod-env npx convex env set RESEND_API_KEY <from resend.com>
 pnpm with-prod-env npx convex env set RESEND_FROM "Налоговый помощник <auth@oknalog.net>"
 
-# Sanity check: list everything that's set.
+# Now that BETTER_AUTH_SECRET is set, generate the REAL JWKS (deferred from
+# Step 5). Use `pnpm exec` on the generate side, NOT `pnpm with-prod-env`:
+# `pnpm run`'s "> @tax-assistant/convex@ …" banner prints to STDOUT and would
+# poison the piped value. `pnpm exec` emits no banner; 2>/dev/null drops convex's
+# stderr, leaving only the JSON keypair on stdout.
+pnpm exec dotenv -e ../../.env.prod -- convex run jwks:generate --no-push 2>/dev/null \
+  | pnpm with-prod-env npx convex env set JWKS
+
+# Sanity check: list everything that's set (JWKS included).
 pnpm with-prod-env npx convex env list
 ```
 
@@ -306,7 +319,7 @@ pnpm deploy:prod -- --direct           # no GHCR: docker save | ssh docker load
 ```
 
 `scripts/deploy.sh` expects `.env.prod` at the repo root (layer C — see above) for the convex-deploy
-step, SSH access as `deploy@185.103.102.210`, and a GHCR-authenticated docker (skip with
+step, SSH access as `deploy@45.145.13.114`, and a GHCR-authenticated docker (skip with
 `--direct`). It also rsyncs `docker-compose.prod.yml` + `Caddyfile.prod` to the VPS on every run;
 the VPS `.env` is never touched.
 
@@ -327,7 +340,7 @@ done
 cd backend/convex && pnpm with-prod-env npx convex deploy
 
 # 3. VPS: pull + restart.
-ssh deploy@185.103.102.210 'cd /opt/tax-assistant \
+ssh deploy@45.145.13.114 'cd /opt/tax-assistant \
   && docker compose -f docker-compose.prod.yml pull web admin tma \
   && docker compose -f docker-compose.prod.yml up -d web admin tma'
 ```

@@ -15,9 +15,9 @@ import {
   TableHeader,
   TableRow,
 } from '@tax-assistant/ui/table'
-import { formatKopecks } from '@tax-assistant/validators'
+import { formatKopecks, formatRating } from '@tax-assistant/validators'
 
-import { ApproveActions } from '~/features/executor-approve'
+import { ApproveActions, PendingChangesCard } from '~/features/executor-approve'
 import { PayoutButton } from '~/features/executor-payout'
 import { useSession } from '~/entities/session'
 import type { Id } from '~/shared/api'
@@ -80,7 +80,8 @@ export function ExecutorDetailPage({ profileId }: ExecutorDetailPageProps) {
     )
   }
 
-  const { profile, user, categories, transactions } = data
+  const { profile, user, categories, pendingCategories, transactions } = data
+  const pending = profile.pendingChanges
 
   return (
     <div className="flex w-full flex-col">
@@ -111,6 +112,25 @@ export function ExecutorDetailPage({ profileId }: ExecutorDetailPageProps) {
           ) : null
         }
       />
+
+      {pending && (
+        <PendingChangesCard
+          profileId={profile._id}
+          submittedAt={pending.submittedAt}
+          current={{
+            fullName: profile.fullName,
+            bio: profile.bio,
+            qualifications: profile.qualifications,
+            categoryTitles: categories.map((c) => c.title),
+          }}
+          proposed={{
+            fullName: pending.fullName,
+            bio: pending.bio,
+            qualifications: pending.qualifications,
+            categoryTitles: (pendingCategories ?? []).map((c) => c.title),
+          }}
+        />
+      )}
 
       <div className="bg-border grid gap-px lg:grid-cols-3">
         <section className="bg-background flex flex-col gap-4 p-6 lg:col-span-2">
@@ -145,6 +165,14 @@ export function ExecutorDetailPage({ profileId }: ExecutorDetailPageProps) {
             <span className="text-muted-foreground text-xs">Баланс к выплате</span>
             <span className="text-3xl font-semibold tabular-nums">
               {formatKopecks(profile.balance)}
+            </span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-muted-foreground text-xs">Рейтинг ответов</span>
+            <span className="text-lg font-semibold tabular-nums">
+              {(profile.ratingCount ?? 0) > 0
+                ? `${formatRating(profile.ratingSum ?? 0, profile.ratingCount ?? 0)} / 10 · ${profile.ratingCount} оценок`
+                : '— нет оценок'}
             </span>
           </div>
           <div className="border-t pt-3">

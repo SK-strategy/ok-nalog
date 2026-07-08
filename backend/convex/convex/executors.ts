@@ -25,12 +25,13 @@ export const apply = mutation({
 
     if (existing) {
       if (existing.status === 'approved') {
-        // Approved profiles edit their details but stay approved.
+        // Approved profiles stay live and unchanged — the edit is parked as a
+        // proposed revision until an admin confirms it (executors.reviewChanges).
+        // A new edit overwrites any previous pending revision and clears the
+        // last rejection comment.
         await ctx.db.patch(existing._id, {
-          fullName,
-          bio,
-          qualifications,
-          categoryIds,
+          pendingChanges: { fullName, bio, qualifications, categoryIds, submittedAt: now },
+          changeRejectionReason: undefined,
           updatedAt: now,
         })
       } else {
@@ -144,6 +145,53 @@ export const review = mutation({
   },
 })
 
+/**
+ * Admin review of a proposed анкета revision from an already-approved executor
+ * (see executors.apply). On approval the pending fields replace the live ones;
+ * on rejection they're discarded and the admin's comment is kept for the
+ * executor. Either way the profile stays `approved` — this is about the edit,
+ * not the person.
+ */
+export const reviewChanges = mutation({
+  args: {
+    profileId: v.id('executorProfiles'),
+    decision: v.union(v.literal('approved'), v.literal('rejected')),
+    rejectionReason: v.optional(v.string()),
+  },
+  handler: async (ctx, { profileId, decision, rejectionReason }) => {
+    const admin = await requireAdmin(ctx)
+    const profile = await ctx.db.get(profileId)
+    if (!profile) throw new ConvexError({ code: 'NOT_FOUND', message: 'Анкета не найдена' })
+    const pending = profile.pendingChanges
+    // Idempotent: a double-click or a stale view that already got resolved
+    // just no-ops rather than throwing.
+    if (!pending) return
+    const now = Date.now()
+
+    if (decision === 'approved') {
+      await ctx.db.patch(profileId, {
+        fullName: pending.fullName,
+        bio: pending.bio,
+        qualifications: pending.qualifications,
+        categoryIds: pending.categoryIds,
+        pendingChanges: undefined,
+        changeRejectionReason: undefined,
+        reviewedBy: admin._id,
+        reviewedAt: now,
+        updatedAt: now,
+      })
+    } else {
+      await ctx.db.patch(profileId, {
+        pendingChanges: undefined,
+        changeRejectionReason: rejectionReason,
+        reviewedBy: admin._id,
+        reviewedAt: now,
+        updatedAt: now,
+      })
+    }
+  },
+})
+
 /** Approved executors, for the admin assignment picker. */
 export const listApproved = query({
   args: {},
@@ -206,6 +254,7 @@ export const adminListAll = query({
         return {
           ...profile,
           user,
+          hasPendingChanges: profile.pendingChanges !== undefined,
           assignedOrderCount: assigned.length,
           completedOrderCount: assigned.filter((o) => o.status === 'completed').length,
           activeOrderCount: assigned.filter(
@@ -231,6 +280,24 @@ export const pendingCount = query({
 })
 
 /**
+ * Number of approved profiles with a proposed revision awaiting review — used
+ * for the «С изменениями» tab badge and folded into the sidebar's total. No
+ * dedicated index (revisions are rare and short-lived); a status scan is fine
+ * at our scale.
+ */
+export const pendingChangesCount = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx)
+    const approved = await ctx.db
+      .query('executorProfiles')
+      .withIndex('by_status', (q) => q.eq('status', 'approved'))
+      .collect()
+    return approved.filter((p) => p.pendingChanges !== undefined).length
+  },
+})
+
+/**
  * Single executor detail: profile + user + categories they cover + recent
  * transactions + every order ever assigned to them (admin only).
  */
@@ -244,6 +311,13 @@ export const adminGet = query({
     }
     const user = await ctx.db.get(profile.userId)
     const categories = await Promise.all(profile.categoryIds.map((id) => ctx.db.get(id)))
+    // Resolve the proposed revision's categories too, so the admin diff can
+    // show «тематика» changes by title rather than id.
+    const pendingCategories = profile.pendingChanges
+      ? (await Promise.all(profile.pendingChanges.categoryIds.map((id) => ctx.db.get(id)))).filter(
+          (c): c is NonNullable<typeof c> => c !== null,
+        )
+      : null
     const transactions = await ctx.db
       .query('transactions')
       .withIndex('by_executor', (q) => q.eq('executorProfileId', profile._id))
@@ -264,6 +338,7 @@ export const adminGet = query({
       profile,
       user,
       categories: categories.filter((c): c is NonNullable<typeof c> => c !== null),
+      pendingCategories,
       transactions,
       orders: orderRows,
     }

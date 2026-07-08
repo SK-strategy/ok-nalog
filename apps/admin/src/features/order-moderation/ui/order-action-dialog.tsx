@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery } from 'convex/react'
 import { ArrowRight } from 'lucide-react'
 
+import type { OrderStatus } from '@tax-assistant/validators'
 import { cn } from '@tax-assistant/ui'
 import { Button } from '@tax-assistant/ui/button'
 import {
@@ -21,7 +22,7 @@ import { formatKopecks, kopecksToRubles, rublesToKopecks } from '@tax-assistant/
 import type { Doc, Id } from '~/shared/api'
 import { api } from '~/shared/api'
 import { formatDateTime, shortId } from '~/shared/lib'
-import { OrderStatusBadge } from '~/shared/ui'
+import { ORDER_STATUS_LABEL, OrderStatusBadge } from '~/shared/ui'
 
 interface OrderActionDialogProps {
   orderId: Id<'orders'> | null
@@ -114,10 +115,31 @@ function OrderActionContent({
           {order.paymentDeadlineAt && (
             <span>Оплата до: {formatDateTime(order.paymentDeadlineAt)}</span>
           )}
+          {order.rating !== undefined && (
+            <span>
+              Оценка клиента:{' '}
+              <span className="text-foreground tabular-nums">{order.rating}/10</span>
+            </span>
+          )}
         </div>
+
+        {order.answerBody && (
+          <>
+            <p className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
+              Ответ эксперта
+            </p>
+            <p
+              className="bg-secondary/40 max-h-48 overflow-y-auto rounded-md border p-3
+                whitespace-pre-wrap"
+            >
+              {order.answerBody}
+            </p>
+          </>
+        )}
       </div>
 
       <StatusForm order={order} onDone={onDone} />
+      <StatusOverride order={order} />
     </>
   )
 }
@@ -126,6 +148,8 @@ function StatusForm({ order, onDone }: { order: Doc<'orders'>; onDone: () => voi
   switch (order.status) {
     case 'submitted':
       return <PriceForm order={order} onDone={onDone} />
+    case 'under_review':
+      return <ReviewAnswerForm order={order} onDone={onDone} />
     case 'awaiting_payment':
       return <MarkPaidForm order={order} onDone={onDone} />
     case 'payment_expired':
@@ -191,7 +215,7 @@ function PriceForm({ order, onDone }: { order: Doc<'orders'>; onDone: () => void
         />
         {priceNum > 0 && (
           <span className="text-muted-foreground text-xs">
-            ≈ {formatKopecks(rublesToKopecks(priceNum))}. Клиент получит счёт на час.
+            ≈ {formatKopecks(rublesToKopecks(priceNum))}. Клиент получит счёт на 24 часа.
           </span>
         )}
       </div>
@@ -216,6 +240,113 @@ function PriceForm({ order, onDone }: { order: Doc<'orders'>; onDone: () => void
           {busy === 'approve' ? 'Утверждаем…' : 'Утвердить стоимость'}
         </Button>
       </DialogFooter>
+    </div>
+  )
+}
+
+function ReviewAnswerForm({ order, onDone }: { order: Doc<'orders'>; onDone: () => void }) {
+  const approveReview = useMutation(api.orders.approveReview)
+  const rejectReview = useMutation(api.orders.rejectReview)
+  const [note, setNote] = useState('')
+  const [showReject, setShowReject] = useState(false)
+  const [busy, setBusy] = useState<false | 'approve' | 'reject'>(false)
+
+  async function submitApprove() {
+    setBusy('approve')
+    try {
+      await approveReview({ orderId: order._id })
+      onDone()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function submitReject() {
+    if (!showReject) {
+      setShowReject(true)
+      return
+    }
+    setBusy('reject')
+    try {
+      await rejectReview({ orderId: order._id, note: note.trim() })
+      onDone()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <ReviewConversation orderId={order._id} />
+      {showReject && (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="review-note">Комментарий для эксперта (необязательно)</Label>
+          <Input
+            id="review-note"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Что нужно доработать"
+          />
+        </div>
+      )}
+      <DialogFooter>
+        <Button variant="destructive" disabled={busy !== false} onClick={() => void submitReject()}>
+          {busy === 'reject' ? 'Возвращаем…' : 'На доработку'}
+        </Button>
+        <Button disabled={busy !== false} onClick={() => void submitApprove()}>
+          {busy === 'approve' ? 'Закрываем…' : 'Одобрить и закрыть'}
+        </Button>
+      </DialogFooter>
+    </div>
+  )
+}
+
+/**
+ * The full customer↔executor dialog the moderator verifies before closing.
+ * The conversation is the deliverable now, so the admin reads the whole
+ * thread here rather than a single answer artifact. Identities stay
+ * anonymised (role labels only), matching the customer/executor surfaces.
+ */
+function ReviewConversation({ orderId }: { orderId: Id<'orders'> }) {
+  const messages = useQuery(api.messages.list, { orderId })
+  return (
+    <div className="flex flex-col gap-1.5">
+      <p className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
+        Переписка
+      </p>
+      <div
+        className="bg-secondary/40 flex max-h-64 flex-col gap-2 overflow-y-auto rounded-md border
+          p-3"
+      >
+        {messages === undefined && <p className="text-muted-foreground text-xs">Загрузка…</p>}
+        {messages?.length === 0 && (
+          <p className="text-muted-foreground text-xs">Сообщений пока нет</p>
+        )}
+        {messages?.map((m) =>
+          m.senderRole === 'system' ? (
+            <p key={m._id} className="text-muted-foreground text-center text-[11px] italic">
+              {m.body}
+            </p>
+          ) : (
+            <div key={m._id} className="text-sm">
+              <span
+                className={cn(
+                  'text-[11px] font-semibold',
+                  m.senderRole === 'executor' ? 'text-status-work' : 'text-status-search',
+                )}
+              >
+                {m.senderRole === 'executor' ? 'Эксперт' : 'Заказчик'}
+              </span>
+              {m.body && <span className="ml-2 whitespace-pre-wrap">{m.body}</span>}
+              {m.attachmentIds.length > 0 && (
+                <span className="text-muted-foreground ml-2 text-xs">
+                  📎 {m.attachmentIds.length}
+                </span>
+              )}
+            </div>
+          ),
+        )}
+      </div>
     </div>
   )
 }
@@ -356,5 +487,149 @@ function AssignForm({ order, onDone }: { order: Doc<'orders'>; onDone: () => voi
         </Button>
       </DialogFooter>
     </div>
+  )
+}
+
+// ── Manual status override ────────────────────────────────────────────────────
+
+// The lifecycle in order, plus off-path states. Rendered as a numbered stepper
+// so the admin can step forward, roll back, or jump straight to a close.
+const STATUS_PIPELINE: OrderStatus[] = [
+  'submitted',
+  'priced',
+  'awaiting_payment',
+  'paid',
+  'assigned',
+  'in_progress',
+  'under_review',
+  'completed',
+  'rated',
+]
+// `answered` is intentionally absent — the step is retired (admin now closes
+// straight from `under_review`); the sweep migrates any legacy stragglers.
+const STATUS_OFF_PATH: OrderStatus[] = ['payment_expired', 'rejected', 'cancelled']
+
+/**
+ * Admin escape hatch: force the order to any status, bypassing the normal
+ * forward-only flow. For rescuing stuck orders, rolling a step back, or closing
+ * manually. Collapsed by default so it isn't hit by accident; every change asks
+ * for a confirm and is logged to the thread by `orders.adminSetStatus`.
+ */
+function StatusOverride({ order }: { order: Doc<'orders'> }) {
+  const setStatus = useMutation(api.orders.adminSetStatus)
+  const [open, setOpen] = useState(false)
+  const [pending, setPending] = useState<OrderStatus | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function confirm() {
+    if (!pending) return
+    setBusy(true)
+    try {
+      await setStatus({ orderId: order._id, status: pending })
+      setPending(null)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="mt-1 flex flex-col gap-2 border-t pt-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="text-muted-foreground hover:text-foreground self-start text-xs font-medium"
+      >
+        {open ? '▾' : '▸'} Изменить статус вручную
+      </button>
+
+      {open && (
+        <div className="flex flex-col gap-2">
+          <p className="text-muted-foreground text-xs">
+            Переопределение в обход обычного порядка — для отката или закрытия застрявшей заявки.
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {STATUS_PIPELINE.map((s, i) => (
+              <StatusChip
+                key={s}
+                status={s}
+                step={i + 1}
+                current={order.status === s}
+                disabled={busy}
+                onPick={() => setPending(s)}
+              />
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {STATUS_OFF_PATH.map((s) => (
+              <StatusChip
+                key={s}
+                status={s}
+                current={order.status === s}
+                disabled={busy}
+                onPick={() => setPending(s)}
+              />
+            ))}
+          </div>
+
+          {pending && (
+            <div className="bg-secondary/40 flex flex-wrap items-center gap-2 rounded-md border p-2">
+              <span className="text-xs">
+                Изменить статус на{' '}
+                <span className="font-semibold">«{ORDER_STATUS_LABEL[pending]}»</span>?
+              </span>
+              <div className="ml-auto flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => setPending(null)}
+                >
+                  Отмена
+                </Button>
+                <Button size="sm" disabled={busy} onClick={() => void confirm()}>
+                  {busy ? 'Меняем…' : 'Подтвердить'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function StatusChip({
+  status,
+  step,
+  current,
+  disabled,
+  onPick,
+}: {
+  status: OrderStatus
+  step?: number
+  current: boolean
+  disabled: boolean
+  onPick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      disabled={current || disabled}
+      onClick={onPick}
+      className={cn(
+        `inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium
+        transition-colors`,
+        current
+          ? 'border-primary bg-primary text-primary-foreground cursor-default'
+          : 'border-border hover:bg-secondary disabled:opacity-50',
+      )}
+    >
+      {step !== undefined && (
+        <span className={cn('tabular-nums', current ? 'opacity-80' : 'text-muted-foreground')}>
+          {step}
+        </span>
+      )}
+      {ORDER_STATUS_LABEL[status]}
+    </button>
   )
 }

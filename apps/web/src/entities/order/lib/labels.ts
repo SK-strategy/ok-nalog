@@ -1,7 +1,7 @@
 import type { OrderStatus } from '@tax-assistant/validators'
 
 export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
-  submitted: 'Ищем эксперта',
+  submitted: 'На проверке',
   rejected: 'Отклонена',
   priced: 'Оценена',
   awaiting_payment: 'Ожидает оплаты',
@@ -9,8 +9,10 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   paid: 'Оплачена',
   assigned: 'Назначен исполнитель',
   in_progress: 'В работе',
+  under_review: 'Проверка ответа',
   answered: 'Ответ готов',
   completed: 'Завершена',
+  rated: 'Завершена',
   cancelled: 'Отменена',
 }
 
@@ -20,8 +22,13 @@ export function orderStatusVariant(status: OrderStatus): BadgeVariant {
   if (status === 'rejected' || status === 'payment_expired' || status === 'cancelled') {
     return 'destructive'
   }
-  if (status === 'completed') return 'default'
-  if (status === 'answered' || status === 'in_progress' || status === 'assigned') {
+  if (status === 'completed' || status === 'rated') return 'default'
+  if (
+    status === 'answered' ||
+    status === 'in_progress' ||
+    status === 'under_review' ||
+    status === 'assigned'
+  ) {
     return 'secondary'
   }
   return 'outline'

@@ -6,8 +6,8 @@
 # Then drop it into .env as CONVEX_SELF_HOSTED_ADMIN_KEY.
 #
 # Endpoints (host-side):
-#   - Convex backend (HTTPS via Caddy)  https://192.168.31.81:3320  ← apps use this
-#   - Convex HTTP actions (HTTPS)       https://192.168.31.81:3321  ← OIDC callback lives here
+#   - Convex backend (HTTPS via Caddy)  https://100.64.0.4:3320  ← apps use this (CONVEX_URL)
+#   - Convex HTTP actions (HTTPS)       https://100.64.0.4:3321  ← OIDC callback lives here (CONVEX_SITE_URL)
 #   - Convex backend (HTTP direct)      http://127.0.0.1:3310       ← for CLI / debugging
 #   - Convex HTTP actions (HTTP direct) http://127.0.0.1:3311
 #   - Convex dashboard                  http://127.0.0.1:6891
@@ -42,11 +42,14 @@ services:
     environment:
       INSTANCE_NAME: ${INSTANCE_NAME:-tax_assistant}
       INSTANCE_SECRET: ${INSTANCE_SECRET:-}
-      # Public origins the backend itself uses when generating URLs.
-      # Point them at the Caddy HTTPS frontend so any URLs the backend
-      # emits work for browser clients on the HTTPS apps.
-      CONVEX_CLOUD_ORIGIN: ${CONVEX_CLOUD_ORIGIN:-https://192.168.31.81:3320}
-      CONVEX_SITE_ORIGIN: ${CONVEX_SITE_ORIGIN:-https://192.168.31.81:3321}
+      # Public origins the backend itself uses when generating URLs (and what
+      # better-auth derives its baseURL from via the auto-injected
+      # CONVEX_SITE_URL). Sourced from the SAME .env values the apps load
+      # (CONVEX_URL / CONVEX_SITE_URL) so the backend, the apps, and the
+      # browser never drift onto different host IPs. Point at the Caddy HTTPS
+      # frontend so any URLs the backend emits work for HTTPS browser clients.
+      CONVEX_CLOUD_ORIGIN: ${CONVEX_URL:-https://100.64.0.4:3320}
+      CONVEX_SITE_ORIGIN: ${CONVEX_SITE_URL:-https://100.64.0.4:3321}
       # Point Convex at the self-hosted Postgres above (intra-container DNS).
       POSTGRES_URL: postgres://tax_assistant:tax_assistant@postgres:5432
       DO_NOT_REQUIRE_SSL: 'true'

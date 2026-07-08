@@ -16,10 +16,19 @@ const ORDER_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
   payment_expired: ['awaiting_payment', 'cancelled'],
   paid: ['assigned', 'cancelled'],
   assigned: ['in_progress', 'cancelled'],
-  in_progress: ['answered', 'cancelled'],
-  // Customer/admin can bounce an answer back for revision.
+  // Executor submits the whole dialog → it goes to admin review, not straight
+  // to a close. The conversation itself is the deliverable.
+  in_progress: ['under_review', 'cancelled'],
+  // Admin gate: approve → close the order (completed) and pay the executor;
+  // reject → back to the executor's desk (in_progress) to keep working.
+  under_review: ['completed', 'in_progress', 'cancelled'],
+  // Legacy edge, kept so the state map stays total over OrderStatus. The
+  // current flow closes from `under_review`; `answered` is no longer reached.
   answered: ['completed', 'in_progress'],
-  completed: [],
+  // Delivered & accepted. The customer may still leave a 1–10 rating, which
+  // is the final, optional stage of the lifecycle.
+  completed: ['rated'],
+  rated: [],
   rejected: [],
   cancelled: [],
 }
@@ -35,13 +44,22 @@ export function nextStatuses(from: OrderStatus): readonly OrderStatus[] {
   return ORDER_TRANSITIONS[from]
 }
 
-const TERMINAL: readonly OrderStatus[] = ['completed', 'rejected', 'cancelled']
+// "Terminal" for chat / list-grouping purposes: the order is closed and the
+// customer↔executor dialog is done. `completed` has one remaining optional
+// edge (→ `rated`), but for the chat window and the active/closed split it
+// counts as closed. `rated` is fully terminal.
+const TERMINAL: readonly OrderStatus[] = ['completed', 'rated', 'rejected', 'cancelled']
 export function isTerminal(status: OrderStatus): boolean {
   return TERMINAL.includes(status)
 }
 
-/** Statuses where the anonymized customer↔executor chat is open. */
-const CHAT_OPEN: readonly OrderStatus[] = ['assigned', 'in_progress', 'answered']
+/**
+ * Statuses where the executor may still write in the anonymized dialog. The
+ * executor works the conversation while `assigned` / `in_progress`; once they
+ * submit it for review (`under_review`) their composer closes until an admin
+ * either closes the order or bounces it back to `in_progress`.
+ */
+const CHAT_OPEN: readonly OrderStatus[] = ['assigned', 'in_progress']
 export function isChatOpen(status: OrderStatus): boolean {
   return CHAT_OPEN.includes(status)
 }

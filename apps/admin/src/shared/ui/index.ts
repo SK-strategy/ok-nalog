@@ -1,6 +1,6 @@
 export { PageHeader } from './page-header'
 export { SortHeader } from './sort-header'
-export { OrderStatusBadge } from './order-status-badge'
+export { OrderStatusBadge, ORDER_STATUS_LABEL } from './order-status-badge'
 export { ExecutorStatusBadge } from './executor-status-badge'
 export { UserCell } from './user-cell'
 export { EmptyState } from './empty-state'

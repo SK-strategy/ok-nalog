@@ -1,11 +1,16 @@
 import { ConvexError, v } from 'convex/values'
 
-import { CLAIMABLE_STATUSES, PAYMENT_WINDOW_MS } from '@tax-assistant/validators'
+import {
+  CLAIMABLE_STATUSES,
+  isValidRating,
+  orderStatusSchema,
+  PAYMENT_WINDOW_MS,
+} from '@tax-assistant/validators'
 
 import type { Doc } from './_generated/dataModel'
-import { mutation, query } from './_generated/server'
+import { internalMutation, mutation, query } from './_generated/server'
 import { getUser, requireAdmin, requireExecutor, requireUser } from './lib/auth'
-import { accrueForOrder } from './lib/ledger'
+import { accrueForOrder, recordRating } from './lib/ledger'
 import { loadParticipant, postSystem, transition } from './lib/orders'
 
 // The order lifecycle. Every status change goes through `transition` (guarded
@@ -15,6 +20,23 @@ import { loadParticipant, postSystem, transition } from './lib/orders'
 function anonymize(order: Doc<'orders'>, role: 'customer' | 'executor' | 'admin') {
   if (role === 'admin') return order
   const { customerId: _c, assignedExecutorId: _e, ...rest } = order
+  return rest
+}
+
+// The answer artifact is held back from the customer until an admin approves
+// it. Before that (`in_progress` → `under_review`) it exists on the order but
+// must not cross the read boundary, or the review gate would be cosmetic.
+const ANSWER_VISIBLE_TO_CUSTOMER: readonly Doc<'orders'>['status'][] = [
+  'answered',
+  'completed',
+  'rated',
+]
+
+/** Customer view: strip counterparty ids AND the pre-approval answer draft. */
+function forCustomer(order: Doc<'orders'>) {
+  const base = anonymize(order, 'customer')
+  if (ANSWER_VISIBLE_TO_CUSTOMER.includes(order.status)) return base
+  const { answerBody: _b, answerAttachmentIds: _a, ...rest } = base
   return rest
 }
 
@@ -70,11 +92,12 @@ export const myOrders = query({
   args: {},
   handler: async (ctx) => {
     const user = await requireUser(ctx)
-    return ctx.db
+    const orders = await ctx.db
       .query('orders')
       .withIndex('by_customer', (q) => q.eq('customerId', user._id))
       .order('desc')
       .collect()
+    return orders.map(forCustomer)
   },
 })
 
@@ -85,7 +108,8 @@ export const get = query({
     const { order, role } = await loadParticipant(ctx, orderId)
     const category = await ctx.db.get(order.categoryId)
     const tag = order.tagId ? await ctx.db.get(order.tagId) : null
-    return { order: anonymize(order, role), category, tag, role }
+    const view = role === 'customer' ? forCustomer(order) : anonymize(order, role)
+    return { order: view, category, tag, role }
   },
 })
 
@@ -284,10 +308,113 @@ export const assignExecutor = mutation({
   },
 })
 
+// Short Russian labels for the manual-override audit log. Kept local to the
+// backend so the system message reads naturally; UI label maps live per app.
+const STATUS_LOG_LABEL: Record<Doc<'orders'>['status'], string> = {
+  submitted: 'На проверке',
+  rejected: 'Отклонена',
+  priced: 'Оценена',
+  awaiting_payment: 'Ожидает оплаты',
+  payment_expired: 'Оплата истекла',
+  paid: 'Оплачена',
+  assigned: 'Назначен исполнитель',
+  in_progress: 'В работе',
+  under_review: 'На проверке диалога',
+  answered: 'Ответ готов',
+  completed: 'Завершена',
+  rated: 'Оценена клиентом',
+  cancelled: 'Отменена',
+}
+
+/**
+ * Admin manual override: force an order to any lifecycle status, bypassing the
+ * forward-only state machine. This is the escape hatch for rescuing stuck
+ * orders and doing rollbacks or a manual close — the guided per-status actions
+ * (approvePrice, assignExecutor, approveReview, …) remain the normal path.
+ *
+ * Side effects are kept idempotent so stepping back and forth is safe: the
+ * completion payout is guarded inside `accrueForOrder`. We stamp a milestone
+ * timestamp when crossing into a stage that records one, without clobbering an
+ * existing value, and every change is written to the thread as a system event.
+ */
+export const adminSetStatus = mutation({
+  args: { orderId: v.id('orders'), status: v.string() },
+  handler: async (ctx, { orderId, status }) => {
+    await requireAdmin(ctx)
+    const parsed = orderStatusSchema.safeParse(status)
+    if (!parsed.success) {
+      throw new ConvexError({ code: 'BAD_STATUS', message: 'Неизвестный статус' })
+    }
+    const target = parsed.data
+    const order = await ctx.db.get(orderId)
+    if (!order) throw new ConvexError({ code: 'NOT_FOUND', message: 'Заявка не найдена' })
+    if (order.status === target) return
+
+    const now = Date.now()
+    const patch: {
+      status: Doc<'orders'>['status']
+      pricedAt?: number
+      paidAt?: number
+      assignedAt?: number
+      reviewedAt?: number
+      completedAt?: number
+    } = { status: target }
+    if (target === 'priced' && order.pricedAt === undefined) patch.pricedAt = now
+    if (target === 'paid' && order.paidAt === undefined) patch.paidAt = now
+    if (target === 'assigned' && order.assignedAt === undefined) patch.assignedAt = now
+    if (target === 'under_review' && order.reviewedAt === undefined) patch.reviewedAt = now
+    if (target === 'completed' && order.completedAt === undefined) patch.completedAt = now
+    await ctx.db.patch(orderId, patch)
+
+    if (target === 'completed' && order.assignedExecutorId && order.approvedPrice) {
+      await accrueForOrder(ctx, order.assignedExecutorId, orderId, order.approvedPrice)
+    }
+    await postSystem(
+      ctx,
+      orderId,
+      `Администратор изменил статус: ${STATUS_LOG_LABEL[order.status]} → ${STATUS_LOG_LABEL[target]}`,
+    )
+  },
+})
+
+/**
+ * One-off retirement sweep for the legacy `answered` step. The flow now closes
+ * straight from `under_review` (admin gate), so `answered` is no longer reached
+ * — but old orders may still be parked there with no way out. This closes each
+ * one (with an idempotent payout) so nothing stays stuck. Safe to re-run.
+ *
+ * Internal: run from the CLI once — `npx convex run orders:closeAnsweredOrders`.
+ */
+export const closeAnsweredOrders = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const stuck = await ctx.db
+      .query('orders')
+      .withIndex('by_status', (q) => q.eq('status', 'answered'))
+      .collect()
+    const now = Date.now()
+    for (const order of stuck) {
+      await ctx.db.patch(order._id, {
+        status: 'completed',
+        completedAt: order.completedAt ?? now,
+      })
+      if (order.assignedExecutorId && order.approvedPrice) {
+        await accrueForOrder(ctx, order.assignedExecutorId, order._id, order.approvedPrice)
+      }
+      await postSystem(ctx, order._id, 'Заявка закрыта — статус «Ответ готов» упразднён')
+    }
+    return { closed: stuck.length }
+  },
+})
+
 // ── Executor ────────────────────────────────────────────────────────────────
 
 /** Active statuses where the order is "in flight" for the executor. */
-const EXECUTOR_ACTIVE_STATUSES: Doc<'orders'>['status'][] = ['assigned', 'in_progress', 'answered']
+const EXECUTOR_ACTIVE_STATUSES: Doc<'orders'>['status'][] = [
+  'assigned',
+  'in_progress',
+  'under_review',
+]
 
 export const assignedToMe = query({
   args: {},
@@ -324,7 +451,7 @@ export const availableForExecutor = query({
       .query('executorProfiles')
       .withIndex('by_user', (q) => q.eq('userId', user._id))
       .unique()
-    if (!profile || profile.status !== 'approved' || profile.categoryIds.length === 0) return []
+    if (profile?.status !== 'approved' || profile.categoryIds.length === 0) return []
 
     // `paid` orders are unassigned by definition — the state machine moves
     // an order off `paid` the instant an executor takes it.
@@ -358,7 +485,7 @@ export const availablePreview = query({
       .query('executorProfiles')
       .withIndex('by_user', (q) => q.eq('userId', user._id))
       .unique()
-    if (!profile || profile.status !== 'approved') return null
+    if (profile?.status !== 'approved') return null
 
     const order = await ctx.db.get(orderId)
     if (!order) return null
@@ -437,43 +564,91 @@ export const startWork = mutation({
   },
 })
 
-export const deliverAnswer = mutation({
+/**
+ * Executor sends the whole dialog for moderation. The conversation itself is
+ * the deliverable — there is no separate answer artifact. The order enters
+ * `under_review`; an admin then either closes it (orders.approveReview) or
+ * bounces it back to `in_progress` (orders.rejectReview). We require at least
+ * one executor reply so an empty dialog can't be submitted.
+ */
+export const submitForReview = mutation({
   args: { orderId: v.id('orders') },
   handler: async (ctx, { orderId }) => {
     const { order, role } = await loadParticipant(ctx, orderId)
     if (role !== 'executor') {
       throw new ConvexError({ code: 'FORBIDDEN', message: 'Только назначенный исполнитель' })
     }
-    await transition(ctx, order, 'answered', { answeredAt: Date.now() })
-    await postSystem(ctx, orderId, 'Ваш ответ готов!!!')
+    const messages = await ctx.db
+      .query('messages')
+      .withIndex('by_order', (q) => q.eq('orderId', orderId))
+      .collect()
+    if (!messages.some((m) => m.senderRole === 'executor')) {
+      throw new ConvexError({ code: 'EMPTY_DIALOG', message: 'Сначала ответьте заказчику в чате' })
+    }
+    await transition(ctx, order, 'under_review', { reviewedAt: Date.now() })
+    await postSystem(ctx, orderId, 'Диалог отправлен на проверку модератору')
+  },
+})
+
+// ── Admin: dialog review gate ─────────────────────────────────────────────────
+
+/** Admin verifies the dialog → close the order and accrue the executor payout. */
+export const approveReview = mutation({
+  args: { orderId: v.id('orders') },
+  handler: async (ctx, { orderId }) => {
+    await requireAdmin(ctx)
+    const order = await ctx.db.get(orderId)
+    if (!order) throw new ConvexError({ code: 'NOT_FOUND', message: 'Заявка не найдена' })
+    await transition(ctx, order, 'completed', { completedAt: Date.now() })
+    if (order.assignedExecutorId && order.approvedPrice) {
+      await accrueForOrder(ctx, order.assignedExecutorId, orderId, order.approvedPrice)
+    }
+    await postSystem(ctx, orderId, 'Диалог проверен, заявка закрыта')
+  },
+})
+
+/**
+ * Bounce the dialog back to the executor. The order returns to `in_progress`
+ * so the executor can keep working. The admin's note is posted as a system
+ * message so the executor sees what to fix.
+ */
+export const rejectReview = mutation({
+  args: { orderId: v.id('orders'), note: v.string() },
+  handler: async (ctx, { orderId, note }) => {
+    await requireAdmin(ctx)
+    const order = await ctx.db.get(orderId)
+    if (!order) throw new ConvexError({ code: 'NOT_FOUND', message: 'Заявка не найдена' })
+    await transition(ctx, order, 'in_progress')
+    const trimmed = note.trim()
+    await postSystem(
+      ctx,
+      orderId,
+      trimmed ? `Диалог отправлен на доработку: ${trimmed}` : 'Диалог отправлен на доработку',
+    )
   },
 })
 
 // ── Closing ─────────────────────────────────────────────────────────────────
 
-export const complete = mutation({
-  args: { orderId: v.id('orders') },
-  handler: async (ctx, { orderId }) => {
+/**
+ * Customer rates the delivered answer on a 1–10 scale — the final lifecycle
+ * stage (`completed → rated`). Only the заказчик may rate, once. The score is
+ * aggregated into the assigned executor's reputation (see lib/ledger).
+ */
+export const rateOrder = mutation({
+  args: { orderId: v.id('orders'), score: v.number() },
+  handler: async (ctx, { orderId, score }) => {
     const { order, role } = await loadParticipant(ctx, orderId)
-    if (role === 'executor') {
-      throw new ConvexError({ code: 'FORBIDDEN', message: 'Подтверждает заказчик или админ' })
+    if (role !== 'customer') {
+      throw new ConvexError({ code: 'FORBIDDEN', message: 'Оценку ставит заказчик' })
     }
-    await transition(ctx, order, 'completed', { completedAt: Date.now() })
-    if (order.assignedExecutorId && order.approvedPrice) {
-      await accrueForOrder(ctx, order.assignedExecutorId, orderId, order.approvedPrice)
+    if (!isValidRating(score)) {
+      throw new ConvexError({ code: 'BAD_RATING', message: 'Оценка должна быть от 1 до 10' })
     }
-    await postSystem(ctx, orderId, 'Заявка успешно закрыта')
-  },
-})
-
-export const requestRevision = mutation({
-  args: { orderId: v.id('orders') },
-  handler: async (ctx, { orderId }) => {
-    const { order, role } = await loadParticipant(ctx, orderId)
-    if (role === 'executor') {
-      throw new ConvexError({ code: 'FORBIDDEN', message: 'Доработку запрашивает заказчик' })
+    await transition(ctx, order, 'rated', { rating: score, ratedAt: Date.now() })
+    if (order.assignedExecutorId) {
+      await recordRating(ctx, order.assignedExecutorId, score)
     }
-    await transition(ctx, order, 'in_progress')
-    await postSystem(ctx, orderId, 'Запрошена доработка ответа')
+    await postSystem(ctx, orderId, `Заказчик оценил ответ: ${score}/10`)
   },
 })

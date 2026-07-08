@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 
 import type { OrderStatus } from '@tax-assistant/validators'
-import { formatKopecks, isTerminal } from '@tax-assistant/validators'
+import { formatKopecks, formatRating, isTerminal } from '@tax-assistant/validators'
 
 import type { HomeMode } from '~/widgets/mode-switcher'
 import { ModeSwitcher } from '~/widgets/mode-switcher'
@@ -231,7 +231,9 @@ function ApprovedCabinet({
   const hasNoCategories = profile?.categoryIds.length === 0
 
   const [editOpen, setEditOpen] = useState(false)
-  const initial = profile ? toInitial(profile) : undefined
+  // Continue editing from the revision that's already awaiting review, if any —
+  // otherwise from the live анкета.
+  const initial = profile ? toInitial(profile.pendingChanges ?? profile) : undefined
 
   // Same allowed-modes logic as HomePage — approved executors always have
   // customer + executor; admins-who-also-executors get all three. The
@@ -281,6 +283,8 @@ function ApprovedCabinet({
           balance={balance}
           lifetimeEarned={lifetimeEarned}
           completedCount={completedCount}
+          ratingSum={profile?.ratingSum ?? 0}
+          ratingCount={profile?.ratingCount ?? 0}
         />
 
         {closed.length > 0 && (
@@ -300,13 +304,16 @@ function ApprovedCabinet({
         )}
 
         {profile && (
-          <SubmittedPreview
-            profile={profile}
-            categoryById={categoryById}
-            onEdit={() => setEditOpen(true)}
-            editLabel="Изменить"
-            headerLabel="Анкета"
-          />
+          <div className="flex flex-col gap-3">
+            <ChangesBanner profile={profile} />
+            <SubmittedPreview
+              profile={profile}
+              categoryById={categoryById}
+              onEdit={() => setEditOpen(true)}
+              editLabel="Изменить"
+              headerLabel="Анкета"
+            />
+          </div>
         )}
       </div>
 
@@ -625,10 +632,14 @@ function BalanceCard({
   balance,
   lifetimeEarned,
   completedCount,
+  ratingSum,
+  ratingCount,
 }: {
   balance: number
   lifetimeEarned: number
   completedCount: number
+  ratingSum: number
+  ratingCount: number
 }) {
   return (
     <div className="bg-primary-soft mx-4 rounded-2xl p-4">
@@ -644,6 +655,14 @@ function BalanceCard({
         <Stat
           label="Выполнено заявок"
           value={`${completedCount} ${pluralRu(completedCount, 'заявка', 'заявки', 'заявок')}`}
+        />
+        <Stat
+          label="Рейтинг"
+          value={
+            ratingCount > 0
+              ? `${formatRating(ratingSum, ratingCount)} · ${ratingCount} ${pluralRu(ratingCount, 'оценка', 'оценки', 'оценок')}`
+              : 'Пока нет оценок'
+          }
         />
       </div>
 
@@ -695,8 +714,45 @@ function Section({
   )
 }
 
+// ─── revision status banner ──────────────────────────────────────────────
+// «На проверке» while an approved executor's edit sits in pendingChanges, or a
+// rejection notice with the admin's comment. Clears once the revision is
+// approved (both fields reset).
+function ChangesBanner({ profile }: { profile: Profile }) {
+  if (profile.pendingChanges) {
+    return (
+      <div
+        className="border-status-pay/30 bg-status-pay-bg/50 mx-1 flex items-start gap-2.5
+          rounded-2xl border px-4 py-3"
+      >
+        <Clock className="text-status-pay size-4 shrink-0 translate-y-px" strokeWidth={1.9} />
+        <div>
+          <p className="text-foreground text-[13px] font-semibold">Изменения на проверке</p>
+          <p className="text-text-soft mt-0.5 text-[12px] leading-snug">
+            Администратор подтвердит обновлённую анкету. Пока клиенты видят прежнюю версию.
+          </p>
+        </div>
+      </div>
+    )
+  }
+  if (profile.changeRejectionReason) {
+    return (
+      <div className="border-destructive/30 bg-destructive/5 mx-1 rounded-2xl border px-4 py-3">
+        <p className="text-destructive flex items-center gap-2 text-[13px] font-semibold">
+          <XCircle className="size-4 shrink-0" strokeWidth={1.9} />
+          Изменения отклонены
+        </p>
+        <p className="text-foreground mt-1 text-[12px] leading-relaxed whitespace-pre-wrap">
+          {profile.changeRejectionReason}
+        </p>
+      </div>
+    )
+  }
+  return null
+}
+
 // ─── helpers ─────────────────────────────────────────────────────────────
-function toInitial(profile: Profile): ExecutorApplicationInitial {
+function toInitial(profile: ExecutorApplicationInitial): ExecutorApplicationInitial {
   return {
     fullName: profile.fullName,
     bio: profile.bio,

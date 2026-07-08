@@ -21,6 +21,8 @@ export function Sidebar() {
   const pathname = usePathname()
   const { me, signOut } = useSession()
   const pendingExecutors = useQuery(api.executors.pendingCount, {})
+  const pendingChanges = useQuery(api.executors.pendingChangesCount, {})
+  const executorsBadge = (pendingExecutors ?? 0) + (pendingChanges ?? 0)
 
   return (
     <aside
@@ -53,7 +55,7 @@ export function Sidebar() {
             label={item.label}
             icon={item.icon}
             active={isNavActive(item.href, pathname)}
-            badge={item.badgeKey === 'executorsPending' ? (pendingExecutors ?? 0) : undefined}
+            badge={item.badgeKey === 'executorsPending' ? executorsBadge : undefined}
           />
         ))}
       </nav>

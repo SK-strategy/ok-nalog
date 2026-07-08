@@ -3,7 +3,7 @@
 import { Button } from '@tax-assistant/ui/button'
 
 import { cn } from '~/shared/lib'
-import { BottomSheet } from '~/shared/ui/bottom-sheet'
+import { Modal } from '~/shared/ui/modal'
 
 import type { LinkEmailController } from '../model/use-link-email'
 
@@ -19,15 +19,21 @@ const inputClass = cn(
  * `useLinkEmail`; this layer only renders the controller. Mirrors the TMA slice.
  */
 export function LinkEmailSheet({
+  open,
   form,
   onClose,
 }: {
+  open: boolean
   form: LinkEmailController
   onClose: () => void
 }) {
   return (
-    <BottomSheet title={form.linkedEmail ? 'Сменить почту' : 'Привязать почту'} onClose={onClose}>
-      <div className="flex flex-col gap-4 px-4 pt-2 pb-6">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={form.linkedEmail ? 'Сменить почту' : 'Привязать почту'}
+    >
+      <div className="flex flex-col gap-4 px-5 pb-5">
         {form.step === 'email' && (
           <>
             <p className="text-text-soft text-sm leading-relaxed">
@@ -129,6 +135,6 @@ export function LinkEmailSheet({
           </>
         )}
       </div>
-    </BottomSheet>
+    </Modal>
   )
 }

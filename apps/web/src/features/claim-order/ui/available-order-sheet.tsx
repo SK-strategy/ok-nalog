@@ -12,7 +12,7 @@ import { formatRelativeDate } from '~/entities/order'
 import type { Id } from '~/shared/api'
 import { api } from '~/shared/api'
 import { categoryStyle } from '~/shared/lib'
-import { BottomSheet } from '~/shared/ui/bottom-sheet'
+import { Modal } from '~/shared/ui/modal'
 
 interface AvailableOrderSheetProps {
   orderId: Id<'orders'> | null
@@ -63,7 +63,7 @@ function SheetInner({
   }
 
   return (
-    <BottomSheet title="Заявка" onClose={onClose}>
+    <Modal open onClose={onClose} title="Заявка">
       {preview === undefined ? (
         <Loading />
       ) : preview === null ? (
@@ -79,7 +79,7 @@ function SheetInner({
           onClaim={() => void onClaim()}
         />
       )}
-    </BottomSheet>
+    </Modal>
   )
 }
 
@@ -114,7 +114,7 @@ function Body({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex-1 overflow-y-auto px-4 pt-1 pb-4">
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-1 pb-4">
         <div className="flex items-start gap-3">
           <div
             className="flex size-12 shrink-0 items-center justify-center rounded-[12px]"
@@ -188,7 +188,7 @@ function Body({
         </p>
       </div>
 
-      <div className="border-separator bg-background border-t px-4 pt-3 pb-4">
+      <div className="border-separator bg-background shrink-0 border-t px-5 pt-3 pb-5">
         {error && <p className="text-destructive mb-2 text-[13px]">{error}</p>}
         {hasActive && !error && (
           <p className="text-status-pay mb-2 text-[13px]">
@@ -205,7 +205,7 @@ function Body({
 
 function Loading() {
   return (
-    <div className="flex flex-1 flex-col gap-3 px-4 pt-1 pb-4">
+    <div className="flex flex-1 flex-col gap-3 px-5 pt-1 pb-5">
       <div className="bg-secondary h-14 animate-pulse rounded-2xl" />
       <div className="bg-secondary h-24 animate-pulse rounded-2xl" />
     </div>

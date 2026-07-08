@@ -19,16 +19,19 @@ export function LinkEmailCard() {
   if (form.isLoading) return null
   const linked = form.linkedEmail
 
-  const close = () => {
-    setOpen(false)
+  // Reset on open (not on close) so the modal keeps its content during the
+  // exit animation, then starts fresh the next time it's opened.
+  const open_ = () => {
     form.reset()
+    setOpen(true)
   }
+  const close = () => setOpen(false)
 
   return (
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={open_}
         className="bg-card hover:bg-secondary/40 flex items-center gap-3 rounded-2xl border p-4
           text-left transition-colors"
       >
@@ -55,7 +58,7 @@ export function LinkEmailCard() {
         </span>
       </button>
 
-      {open && <LinkEmailSheet form={form} onClose={close} />}
+      <LinkEmailSheet open={open} form={form} onClose={close} />
     </>
   )
 }

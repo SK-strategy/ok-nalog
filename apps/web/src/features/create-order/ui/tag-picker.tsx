@@ -1,17 +1,18 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { Check, ChevronDown, Search } from 'lucide-react'
+import { useMemo } from 'react'
+import { Check, ChevronDown } from 'lucide-react'
 
 import type { Doc, Id } from '~/shared/api'
 import { cn } from '~/shared/lib'
-import { BottomSheet } from '~/shared/ui/bottom-sheet'
+import { Combobox } from '~/shared/ui/combobox'
 
 type Tag = Doc<'tags'>
 
 /**
- * Searchable tag picker — opens a sheet with a filter input so the customer
- * can find a specific topic out of dozens.
+ * Searchable tag picker — a web-native combobox: clicking the field drops a
+ * search-as-you-type list right below it (keyboard navigable), instead of the
+ * mobile bottom sheet the web app inherited from the TMA.
  */
 export function TagPicker({
   tags,
@@ -28,95 +29,48 @@ export function TagPicker({
   loading?: boolean
   disabled?: boolean
 }) {
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState('')
-
   const selected = useMemo(() => tags?.find((t) => t._id === value), [tags, value])
-
-  const filtered = useMemo(() => {
-    if (!tags) return []
-    const q = query.trim().toLowerCase()
-    if (!q) return tags
-    return tags.filter((t) => t.name.toLowerCase().includes(q))
-  }, [tags, query])
-
   const inert = Boolean(loading) || Boolean(disabled)
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => {
-          if (!inert) setOpen(true)
-        }}
-        className={cn(
-          'bg-secondary flex w-full items-center gap-2.5 rounded-2xl p-3.5 text-left',
-          'transition-opacity hover:opacity-90 disabled:opacity-55',
-        )}
-        disabled={inert}
-      >
-        <div className="min-w-0 flex-1">
-          {selected ? (
-            <div className="text-foreground truncate text-[15px] font-semibold">
-              {selected.name}
-            </div>
-          ) : (
-            <span className="text-hint text-[15px]">{loading ? 'Загрузка…' : placeholder}</span>
-          )}
-        </div>
-        <ChevronDown className="text-hint size-4 shrink-0" />
-      </button>
-
-      {open && (
-        <BottomSheet onClose={() => setOpen(false)} title="Тема обращения">
-          <div className="bg-background sticky top-0 z-10 px-4 pt-2 pb-3">
-            <div className="bg-secondary flex items-center gap-2 rounded-xl px-3 py-2.5">
-              <Search className="text-hint size-4 shrink-0" />
-              <input
-                autoFocus
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Поиск по темам"
-                className="text-foreground placeholder:text-hint w-full bg-transparent text-[15px]
-                  outline-none"
-              />
-            </div>
-          </div>
-          <ul className="flex-1 overflow-y-auto pb-6">
-            {filtered.length === 0 && (
-              <li className="text-hint px-4 py-6 text-center text-sm">Ничего не найдено</li>
-            )}
-            {filtered.map((t, i) => (
-              <li key={t._id}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onChange(t._id)
-                    setOpen(false)
-                    setQuery('')
-                  }}
-                  className={cn(
-                    `hover:bg-secondary/60 relative flex w-full items-start gap-3 px-4 py-3
-                    text-left`,
-                    i > 0 &&
-                      `before:bg-separator before:absolute before:top-0 before:right-0 before:left-4
-                      before:h-px before:content-[""]`,
-                  )}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="text-foreground text-[15px] leading-snug font-medium">
-                      {t.name}
-                    </div>
-                  </div>
-                  {value === t._id && (
-                    <Check className="text-primary size-[18px] shrink-0 translate-y-0.5" />
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </BottomSheet>
+    <Combobox
+      items={tags}
+      selectedKey={value}
+      onSelect={(t) => onChange(t._id)}
+      getKey={(t) => t._id}
+      getSearchText={(t) => t.name}
+      searchPlaceholder="Поиск по темам"
+      renderItem={(t, isSelected) => (
+        <>
+          <span className="text-foreground min-w-0 flex-1 text-[15px] font-medium">{t.name}</span>
+          {isSelected && <Check className="text-primary size-[18px] shrink-0" />}
+        </>
       )}
-    </>
+      trigger={
+        <button
+          type="button"
+          disabled={inert}
+          className={cn(
+            `group bg-secondary flex w-full items-center gap-2.5 rounded-2xl border
+            border-transparent p-3.5 text-left transition-colors disabled:opacity-55`,
+            'data-[state=open]:border-primary data-[state=open]:bg-background',
+          )}
+        >
+          <span className="min-w-0 flex-1">
+            {selected ? (
+              <span className="text-foreground block truncate text-[15px] font-semibold">
+                {selected.name}
+              </span>
+            ) : (
+              <span className="text-hint text-[15px]">{loading ? 'Загрузка…' : placeholder}</span>
+            )}
+          </span>
+          <ChevronDown
+            className="text-hint size-4 shrink-0 transition-transform
+              group-data-[state=open]:rotate-180"
+          />
+        </button>
+      }
+    />
   )
 }

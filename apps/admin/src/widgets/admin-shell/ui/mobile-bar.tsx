@@ -14,6 +14,8 @@ import { isNavActive, NAV_ITEMS } from '../lib/nav'
 export function MobileBar({ className }: { className?: string }) {
   const pathname = usePathname()
   const pendingExecutors = useQuery(api.executors.pendingCount, {})
+  const pendingChanges = useQuery(api.executors.pendingChangesCount, {})
+  const executorsBadge = (pendingExecutors ?? 0) + (pendingChanges ?? 0)
 
   return (
     <nav
@@ -29,7 +31,7 @@ export function MobileBar({ className }: { className?: string }) {
             label={item.label}
             icon={item.icon}
             active={isNavActive(item.href, pathname)}
-            badge={item.badgeKey === 'executorsPending' ? (pendingExecutors ?? 0) : undefined}
+            badge={item.badgeKey === 'executorsPending' ? executorsBadge : undefined}
           />
         </div>
       ))}

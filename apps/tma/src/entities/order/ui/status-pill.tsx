@@ -14,8 +14,10 @@ const TONE: Record<OrderStatus, Tone> = {
   paid: 'work',
   assigned: 'work',
   in_progress: 'work',
+  under_review: 'work',
   answered: 'done',
   completed: 'done',
+  rated: 'done',
   rejected: 'fail',
   cancelled: 'fail',
 }

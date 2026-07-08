@@ -131,9 +131,35 @@ export default defineSchema({
     categoryIds: v.array(v.id('categories')),
     status: v.union(v.literal('pending'), v.literal('approved'), v.literal('rejected')),
     balance: v.number(), // kopecks accrued, zeroed on payout
+    // Reputation: running sum and count of customers' 1–10 answer ratings.
+    // Denormalised (bumped atomically in orders.rateOrder, like `balance`) so
+    // the cabinet/admin can show an average without scanning every order.
+    // Optional for back-compat with profiles created before ratings existed —
+    // read them as 0 via `?? 0`.
+    ratingSum: v.optional(v.number()),
+    ratingCount: v.optional(v.number()),
     reviewedBy: v.optional(v.id('users')),
     reviewedAt: v.optional(v.number()),
     rejectionReason: v.optional(v.string()),
+    // Approved-executor edits don't go live immediately. They land here as a
+    // proposed revision awaiting admin review (executors.apply on an approved
+    // profile). executors.reviewChanges merges them into the live fields on
+    // approval, or discards them (recording changeRejectionReason) on
+    // rejection. The executor stays `approved` and fully operational the whole
+    // time — customers keep seeing the live анкета. Only ever one outstanding
+    // revision per profile: a fresh edit overwrites the previous pending one.
+    pendingChanges: v.optional(
+      v.object({
+        fullName: v.string(),
+        bio: v.string(),
+        qualifications: v.string(),
+        categoryIds: v.array(v.id('categories')),
+        submittedAt: v.number(),
+      }),
+    ),
+    // Admin's comment when the last proposed revision was rejected. Kept until
+    // the executor submits a new revision (which clears it).
+    changeRejectionReason: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -159,21 +185,35 @@ export default defineSchema({
       v.literal('paid'),
       v.literal('assigned'),
       v.literal('in_progress'),
+      v.literal('under_review'),
       v.literal('answered'),
       v.literal('completed'),
+      v.literal('rated'),
       v.literal('cancelled'),
     ),
     quotedPrice: v.number(), // snapshot of category.basePrice at creation
     approvedPrice: v.optional(v.number()), // admin-утвердил
     assignedExecutorId: v.optional(v.id('users')),
     rejectionReason: v.optional(v.string()),
-    paymentDeadlineAt: v.optional(v.number()), // set = now + 1h on awaiting_payment
+    paymentDeadlineAt: v.optional(v.number()), // set = now + PAYMENT_WINDOW_MS on awaiting_payment
+    // ── Legacy answer artifact ──────────────────────────────────────────────
+    // Historically the executor's deliverable was a single formal answer. The
+    // flow is now conversation-based: the executor works the chat and submits
+    // the whole dialog for review (orders.submitForReview). These fields are
+    // retained only for orders created under the old model and are no longer
+    // written; the moderator reviews the conversation itself.
+    answerBody: v.optional(v.string()),
+    answerAttachmentIds: v.optional(v.array(v.id('_storage'))),
+    // ── Customer's 1–10 answer rating (final, optional lifecycle stage) ──────
+    rating: v.optional(v.number()),
+    ratedAt: v.optional(v.number()),
     createdAt: v.number(),
     submittedAt: v.optional(v.number()),
     pricedAt: v.optional(v.number()),
     paidAt: v.optional(v.number()),
     assignedAt: v.optional(v.number()),
     answeredAt: v.optional(v.number()),
+    reviewedAt: v.optional(v.number()), // executor submitted the dialog for review
     completedAt: v.optional(v.number()),
   })
     .index('by_customer', ['customerId'])

@@ -305,6 +305,9 @@ function ChatHeader({
           </span>
         </div>
       </div>
+      {role === 'executor' && order.status === 'in_progress' && (
+        <ExecutorSubmitReview orderId={order._id} />
+      )}
       <StatusPill status={order.status} />
     </header>
   )
@@ -336,14 +339,21 @@ function headerFor(
   return { title: 'Обращение', subtitle: category?.title ?? '' }
 }
 
-const ASSIGNED_STATES = new Set<OrderStatus>(['assigned', 'in_progress', 'answered', 'completed'])
+const ASSIGNED_STATES = new Set<OrderStatus>([
+  'assigned',
+  'in_progress',
+  'under_review',
+  'answered',
+  'completed',
+  'rated',
+])
 
 const CUSTOMER_PENDING_LABEL: Partial<Record<OrderStatus, string>> = {
-  submitted: 'Ищем эксперта',
+  submitted: 'На проверке',
   priced: 'Стоимость утверждена',
   awaiting_payment: 'Ожидает оплаты',
   payment_expired: 'Оплата просрочена',
-  paid: 'Подбираем эксперта',
+  paid: 'Ищем эксперта',
   rejected: 'Отклонена',
   cancelled: 'Отменена',
 }
@@ -351,17 +361,16 @@ const CUSTOMER_PENDING_LABEL: Partial<Record<OrderStatus, string>> = {
 const EXECUTOR_STATE_LABEL: Partial<Record<OrderStatus, string>> = {
   assigned: 'принимает заказ',
   in_progress: 'пишет ответ',
+  under_review: 'ответ на проверке',
   answered: 'ответ готов',
   completed: 'заявка завершена',
+  rated: 'заявка завершена',
 }
 
 function ActionSlot({ order, role }: { order: Order; role: Role }) {
   const args = { orderId: order._id }
   const cancel = useMutation(api.orders.cancel)
-  const complete = useMutation(api.orders.complete)
-  const requestRevision = useMutation(api.orders.requestRevision)
   const startWork = useMutation(api.orders.startWork)
-  const deliverAnswer = useMutation(api.orders.deliverAnswer)
 
   if (role === 'customer') {
     if (order.status === 'awaiting_payment') {
@@ -384,14 +393,21 @@ function ActionSlot({ order, role }: { order: Order; role: Role }) {
             </>
           }
         >
-          {/* TODO: wire Telegram Payments / ЮKassa — disabled until gateway is live */}
-          <Button size="sm" disabled>
-            Оплатить
-          </Button>
+          <PayButton orderId={order._id} />
           <Button variant="outline" size="sm" onClick={() => void cancel(args)}>
             <X className="size-3.5" /> Отменить
           </Button>
         </ActionCard>
+      )
+    }
+
+    if (order.status === 'under_review') {
+      return (
+        <ActionCard
+          tone="work"
+          title="Эксперт завершил работу"
+          body="Идёт финальная проверка переписки модератором. Скоро заявка закроется."
+        />
       )
     }
 
@@ -435,8 +451,8 @@ function ActionSlot({ order, role }: { order: Order; role: Role }) {
       return (
         <ActionCard
           tone="search"
-          title="Ищем эксперта"
-          body="Ваша заявка опубликована — подходящий эксперт возьмёт её в работу."
+          title="Заявка на проверке"
+          body="Проверяем вашу заявку и рассчитываем стоимость. Как только всё будет готово, откроем оплату."
         >
           <Button variant="outline" size="sm" onClick={() => void cancel(args)}>
             <X className="size-3.5" /> Отменить
@@ -445,20 +461,13 @@ function ActionSlot({ order, role }: { order: Order; role: Role }) {
       )
     }
 
-    if (order.status === 'answered') {
+    if (order.status === 'paid') {
       return (
         <ActionCard
-          tone="done"
-          title="Эксперт прислал ответ"
-          body="Подтвердите получение или попросите доработку."
-        >
-          <Button size="sm" onClick={() => void complete(args)}>
-            <Check className="size-3.5" /> Принять
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => void requestRevision(args)}>
-            <RotateCcw className="size-3.5" /> Доработать
-          </Button>
-        </ActionCard>
+          tone="search"
+          title="Ищем эксперта"
+          body="Оплата получена — заявка опубликована на бирже. Подходящий эксперт скоро возьмёт её в работу."
+        />
       )
     }
 
@@ -477,7 +486,25 @@ function ActionSlot({ order, role }: { order: Order; role: Role }) {
     }
 
     if (order.status === 'completed') {
-      return <ActionCard tone="done" title="Заявка завершена" />
+      return (
+        <div className="flex flex-col gap-2">
+          {order.answerBody && <AnswerCard body={order.answerBody} />}
+          <RatingCard orderId={order._id} />
+        </div>
+      )
+    }
+
+    if (order.status === 'rated') {
+      return (
+        <div className="flex flex-col gap-2">
+          {order.answerBody && <AnswerCard body={order.answerBody} />}
+          <ActionCard
+            tone="done"
+            title="Заявка завершена"
+            body={`Ваша оценка ответа: ${order.rating ?? '—'}/10`}
+          />
+        </div>
+      )
     }
   }
 
@@ -493,11 +520,20 @@ function ActionSlot({ order, role }: { order: Order; role: Role }) {
     }
     if (order.status === 'in_progress') {
       return (
-        <ActionCard tone="work" title="В работе" body="Подготовьте ответ и отправьте заказчику.">
-          <Button size="sm" onClick={() => void deliverAnswer(args)}>
-            Отправить ответ
-          </Button>
-        </ActionCard>
+        <ActionCard
+          tone="work"
+          title="Диалог с заказчиком"
+          body="Отвечайте заказчику в чате ниже. Когда закончите — нажмите «На проверку» в шапке, чтобы отправить переписку модератору."
+        />
+      )
+    }
+    if (order.status === 'under_review') {
+      return (
+        <ActionCard
+          tone="pay"
+          title="Диалог на проверке"
+          body="Модератор проверяет переписку. После одобрения заявка закроется, а при доработке вернётся к вам."
+        />
       )
     }
   }
@@ -513,6 +549,7 @@ function AdminActionSlot({ order }: { order: Order }) {
   if (order.status === 'awaiting_payment') return <AdminPaymentCard order={order} />
   if (order.status === 'payment_expired') return <AdminReopenCard orderId={order._id} />
   if (order.status === 'paid') return <AdminAssignCard order={order} />
+  if (order.status === 'under_review') return <AdminReviewCard order={order} />
   return null
 }
 
@@ -713,6 +750,161 @@ function AdminAssignCard({ order }: { order: Order }) {
       </select>
       <Button size="sm" disabled={busy || !pick} onClick={() => void doAssign()}>
         Назначить
+      </Button>
+    </ActionCard>
+  )
+}
+
+// ─── customer: pay / answer / rating ─────────────────────────────────────
+function PayButton({ orderId }: { orderId: Id<'orders'> }) {
+  const checkout = useMutation(api.payments.checkout)
+  const [busy, setBusy] = useState(false)
+  return (
+    <Button
+      size="sm"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true)
+        try {
+          const res = await checkout({ orderId })
+          if (res.checkoutUrl) window.open(res.checkoutUrl, '_blank')
+        } finally {
+          setBusy(false)
+        }
+      }}
+    >
+      Оплатить
+    </Button>
+  )
+}
+
+/** The executor's formal answer, shown to the customer once admin-approved. */
+function AnswerCard({ body }: { body: string }) {
+  return (
+    <div className="border-status-done/40 bg-status-done-bg rounded-2xl border p-3.5">
+      <div className="text-foreground text-sm font-bold">Ответ эксперта</div>
+      <div className="text-foreground mt-1.5 text-[14px] leading-relaxed whitespace-pre-wrap">
+        {body}
+      </div>
+    </div>
+  )
+}
+
+function RatingCard({ orderId }: { orderId: Id<'orders'> }) {
+  const rate = useMutation(api.orders.rateOrder)
+  const [busy, setBusy] = useState(false)
+  return (
+    <ActionCard
+      tone="done"
+      title="Оцените ответ"
+      body="Насколько ответ вам помог? 1 — совсем не устраивает, 10 — супер."
+    >
+      {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+        <button
+          key={n}
+          type="button"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true)
+            try {
+              await rate({ orderId, score: n })
+            } finally {
+              setBusy(false)
+            }
+          }}
+          className="bg-secondary text-foreground hover:bg-primary hover:text-primary-foreground
+            flex size-8 items-center justify-center rounded-lg text-sm font-semibold tabular-nums
+            transition-colors disabled:opacity-50"
+        >
+          {n}
+        </button>
+      ))}
+    </ActionCard>
+  )
+}
+
+// ─── executor: submit dialog for review (header button) ──────────────────
+function ExecutorSubmitReview({ orderId }: { orderId: Id<'orders'> }) {
+  const submit = useMutation(api.orders.submitForReview)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(false)
+  return (
+    <Button
+      size="sm"
+      disabled={busy}
+      variant={error ? 'destructive' : 'default'}
+      onClick={async () => {
+        setBusy(true)
+        setError(false)
+        try {
+          await submit({ orderId })
+        } catch {
+          // Most likely EMPTY_DIALOG — the executor hasn't replied yet.
+          setError(true)
+        } finally {
+          setBusy(false)
+        }
+      }}
+    >
+      <Check className="size-3.5" />
+      {busy ? 'Отправка…' : error ? 'Ответьте в чате' : 'На проверку'}
+    </Button>
+  )
+}
+
+// ─── admin: dialog review gate ───────────────────────────────────────────
+function AdminReviewCard({ order }: { order: Order }) {
+  const approve = useMutation(api.orders.approveReview)
+  const reject = useMutation(api.orders.rejectReview)
+  const [busy, setBusy] = useState(false)
+  const [rejecting, setRejecting] = useState(false)
+  const [note, setNote] = useState('')
+  return (
+    <ActionCard
+      tone="pay"
+      title="Проверка диалога"
+      body="Проверьте переписку выше. Одобрите — заявка закроется и эксперт получит начисление; либо верните на доработку."
+    >
+      {rejecting && (
+        <Input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Комментарий эксперту (необязательно)"
+          disabled={busy}
+        />
+      )}
+      <Button
+        size="sm"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true)
+          try {
+            await approve({ orderId: order._id })
+          } finally {
+            setBusy(false)
+          }
+        }}
+      >
+        <Check className="size-3.5" /> Одобрить и закрыть
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={busy}
+        onClick={async () => {
+          if (!rejecting) {
+            setRejecting(true)
+            return
+          }
+          setBusy(true)
+          try {
+            await reject({ orderId: order._id, note: note.trim() })
+          } finally {
+            setBusy(false)
+          }
+        }}
+      >
+        <RotateCcw className="size-3.5" /> На доработку
       </Button>
     </ActionCard>
   )

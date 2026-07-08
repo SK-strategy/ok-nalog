@@ -25,10 +25,7 @@ export const getUrls = query({
     // for `ctx.storage.getMetadata(…)`.
     return Promise.all(
       ids.map(async (id) => {
-        const [url, metadata] = await Promise.all([
-          ctx.storage.getUrl(id),
-          ctx.db.system.get(id),
-        ])
+        const [url, metadata] = await Promise.all([ctx.storage.getUrl(id), ctx.db.system.get(id)])
         return {
           id,
           url,

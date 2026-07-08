@@ -12,7 +12,8 @@ import { useSession } from '~/entities/session'
 import type { Doc } from '~/shared/api'
 import { api } from '~/shared/api'
 
-type Order = Doc<'orders'>
+// Server anonymizes `myOrders` (strips customerId + assignedExecutorId).
+type Order = Omit<Doc<'orders'>, 'customerId' | 'assignedExecutorId'>
 
 /**
  * /orders — full list of the customer's obligations, grouped into the

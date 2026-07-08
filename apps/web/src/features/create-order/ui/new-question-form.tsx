@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { Check, ChevronDown, ShieldCheck } from 'lucide-react'
 
 import type { ClientType } from '@tax-assistant/validators'
@@ -135,64 +134,62 @@ function CategoryField({
   clientType?: ClientType
   onSelect: (id: Id<'categories'> | undefined) => void
 }) {
-  const [open, setOpen] = useState(false)
   const palette = category ? categoryStyle(category.sortOrder) : null
   const Icon = palette?.icon
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={cn(
-          'bg-secondary flex w-full items-center gap-3 rounded-2xl p-3.5 text-left',
-          'transition-opacity hover:opacity-90',
-        )}
-      >
-        {category && palette && Icon ? (
-          <div
-            className="flex size-10 shrink-0 items-center justify-center rounded-[10px]"
-            style={{ background: palette.bg, color: palette.fg }}
-          >
-            <Icon className="size-5" strokeWidth={1.8} />
-          </div>
-        ) : (
-          <div
-            className="bg-background flex size-10 shrink-0 items-center justify-center
-              rounded-[10px]"
-          >
-            <ChevronDown className="text-hint size-5" />
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          {category ? (
-            <>
-              <div className="text-foreground truncate text-[15px] font-semibold">
-                {category.title}
-              </div>
-              <div className="text-hint mt-0.5 truncate text-[12px]">
-                от{NBSP}
-                {formatKopecks(category.basePrice)}
-              </div>
-            </>
-          ) : (
-            <span className="text-hint text-[15px]">
-              {loading ? 'Загрузка…' : 'Выберите категорию'}
-            </span>
+    <CategorySearchSheet
+      onSelect={(c) => onSelect(c._id)}
+      clientType={clientType}
+      selectedId={category?._id}
+      trigger={
+        <button
+          type="button"
+          className={cn(
+            `group bg-secondary flex w-full items-center gap-3 rounded-2xl border border-transparent
+            p-3.5 text-left transition-colors`,
+            'data-[state=open]:border-primary data-[state=open]:bg-background',
           )}
-        </div>
-        <ChevronDown className="text-hint size-4 shrink-0" />
-      </button>
-
-      <CategorySearchSheet
-        open={open}
-        onClose={() => setOpen(false)}
-        onSelect={(c) => onSelect(c._id)}
-        clientType={clientType}
-        selectedId={category?._id}
-        title="Выберите категорию"
-      />
-    </>
+        >
+          {category && palette && Icon ? (
+            <div
+              className="flex size-10 shrink-0 items-center justify-center rounded-[10px]"
+              style={{ background: palette.bg, color: palette.fg }}
+            >
+              <Icon className="size-5" strokeWidth={1.8} />
+            </div>
+          ) : (
+            <div
+              className="bg-background flex size-10 shrink-0 items-center justify-center
+                rounded-[10px]"
+            >
+              <ChevronDown className="text-hint size-5" />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            {category ? (
+              <>
+                <div className="text-foreground truncate text-[15px] font-semibold">
+                  {category.title}
+                </div>
+                <div className="text-hint mt-0.5 truncate text-[12px]">
+                  от{NBSP}
+                  {formatKopecks(category.basePrice)}
+                </div>
+              </>
+            ) : (
+              <span className="text-hint text-[15px]">
+                {loading ? 'Загрузка…' : 'Выберите категорию'}
+              </span>
+            )}
+          </div>
+          <ChevronDown
+            className="text-hint size-4 shrink-0 transition-transform
+              group-data-[state=open]:rotate-180"
+          />
+        </button>
+      }
+    />
   )
 }
 

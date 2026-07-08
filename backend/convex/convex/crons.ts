@@ -4,8 +4,10 @@ import { internal } from './_generated/api'
 import { internalMutation } from './_generated/server'
 import { postSystem, transition } from './lib/orders'
 
-// "Нет оплаты 1 час" → auto-expire. Runs every 5 minutes; expired orders land
-// in the admin non-payers list (orders.unpaid) and can be reopened.
+// "Нет оплаты 24 часа" → auto-expire (window = PAYMENT_WINDOW_MS, stamped onto
+// paymentDeadlineAt when the order enters awaiting_payment). Runs every 5
+// minutes; expired orders land in the admin non-payers list (orders.unpaid)
+// and can be reopened.
 export const sweepExpiredPayments = internalMutation({
   args: {},
   handler: async (ctx) => {

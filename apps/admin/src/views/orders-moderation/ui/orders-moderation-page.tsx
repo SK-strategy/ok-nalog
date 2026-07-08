@@ -37,16 +37,23 @@ import {
 const ATTENTION_STATUSES: ReadonlySet<OrderStatus> = new Set([
   'submitted',
   'paid',
+  'under_review',
   'payment_expired',
 ])
 
-const TERMINAL_STATUSES: ReadonlySet<OrderStatus> = new Set(['completed', 'cancelled', 'rejected'])
+const TERMINAL_STATUSES: ReadonlySet<OrderStatus> = new Set([
+  'completed',
+  'rated',
+  'cancelled',
+  'rejected',
+])
 
 // Lower number = appears higher when sorting "Статус" ascending.
 // Attention rows pin to the top; closed orders drift to the bottom.
 const STATUS_PRIORITY: Record<OrderStatus, number> = {
   submitted: 0,
   paid: 0,
+  under_review: 0,
   payment_expired: 0,
   awaiting_payment: 1,
   answered: 1,
@@ -54,6 +61,7 @@ const STATUS_PRIORITY: Record<OrderStatus, number> = {
   in_progress: 2,
   priced: 2,
   completed: 3,
+  rated: 3,
   cancelled: 3,
   rejected: 3,
 }
@@ -342,6 +350,8 @@ function actionForStatus(status: OrderStatus): {
   switch (status) {
     case 'submitted':
       return { label: 'Оценить', variant: 'default' }
+    case 'under_review':
+      return { label: 'Проверить ответ', variant: 'default' }
     case 'paid':
       return { label: 'Назначить', variant: 'default' }
     case 'payment_expired':
