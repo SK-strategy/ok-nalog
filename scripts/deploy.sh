@@ -19,13 +19,13 @@
 #   scripts/deploy.sh --direct         # no registry: save/load images over SSH
 #
 # Overrides via env:
-#   DEPLOY_HOST=deploy@45.145.13.114    DEPLOY_DIR=/opt/tax-assistant
+#   DEPLOY_HOST=deploy@62.60.231.38    DEPLOY_DIR=/opt/tax-assistant
 #   REGISTRY=ghcr.io/netosha            PLATFORM=linux/amd64
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-DEPLOY_HOST="${DEPLOY_HOST:-deploy@45.145.13.114}"
+DEPLOY_HOST="${DEPLOY_HOST:-deploy@62.60.231.38}"
 DEPLOY_DIR="${DEPLOY_DIR:-/opt/tax-assistant}"
 REGISTRY="${REGISTRY:-ghcr.io/netosha}"
 PLATFORM="${PLATFORM:-linux/amd64}"
