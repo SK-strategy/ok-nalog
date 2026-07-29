@@ -17,6 +17,7 @@ import {
 } from '@tax-assistant/ui/dialog'
 import { Input } from '@tax-assistant/ui/input'
 import { Label } from '@tax-assistant/ui/label'
+import { StarRating } from '@tax-assistant/ui/star-rating'
 import { formatKopecks, kopecksToRubles, rublesToKopecks } from '@tax-assistant/validators'
 
 import type { Doc, Id } from '~/shared/api'
@@ -53,6 +54,7 @@ export function OrderActionDialog({ orderId, open, onOpenChange }: OrderActionDi
           <OrderActionContent
             order={data.order}
             category={data.category}
+            executorNickname={data.executorNickname}
             onDone={() => onOpenChange(false)}
           />
         )}
@@ -64,10 +66,13 @@ export function OrderActionDialog({ orderId, open, onOpenChange }: OrderActionDi
 function OrderActionContent({
   order,
   category,
+  executorNickname,
   onDone,
 }: {
   order: Doc<'orders'>
   category: Doc<'categories'> | null
+  /** The assigned executor's customer-facing handle, for the review thread. */
+  executorNickname: string | null
   onDone: () => void
 }) {
   return (
@@ -116,9 +121,8 @@ function OrderActionContent({
             <span>Оплата до: {formatDateTime(order.paymentDeadlineAt)}</span>
           )}
           {order.rating !== undefined && (
-            <span>
-              Оценка клиента:{' '}
-              <span className="text-foreground tabular-nums">{order.rating}/10</span>
+            <span className="inline-flex items-center gap-1.5">
+              Оценка клиента: <StarRating value={order.rating} showValue={false} />
             </span>
           )}
         </div>
@@ -138,18 +142,26 @@ function OrderActionContent({
         )}
       </div>
 
-      <StatusForm order={order} onDone={onDone} />
+      <StatusForm order={order} executorNickname={executorNickname} onDone={onDone} />
       <StatusOverride order={order} />
     </>
   )
 }
 
-function StatusForm({ order, onDone }: { order: Doc<'orders'>; onDone: () => void }) {
+function StatusForm({
+  order,
+  executorNickname,
+  onDone,
+}: {
+  order: Doc<'orders'>
+  executorNickname: string | null
+  onDone: () => void
+}) {
   switch (order.status) {
     case 'submitted':
       return <PriceForm order={order} onDone={onDone} />
     case 'under_review':
-      return <ReviewAnswerForm order={order} onDone={onDone} />
+      return <ReviewAnswerForm order={order} executorNickname={executorNickname} onDone={onDone} />
     case 'awaiting_payment':
       return <MarkPaidForm order={order} onDone={onDone} />
     case 'payment_expired':
@@ -244,7 +256,15 @@ function PriceForm({ order, onDone }: { order: Doc<'orders'>; onDone: () => void
   )
 }
 
-function ReviewAnswerForm({ order, onDone }: { order: Doc<'orders'>; onDone: () => void }) {
+function ReviewAnswerForm({
+  order,
+  executorNickname,
+  onDone,
+}: {
+  order: Doc<'orders'>
+  executorNickname: string | null
+  onDone: () => void
+}) {
   const approveReview = useMutation(api.orders.approveReview)
   const rejectReview = useMutation(api.orders.rejectReview)
   const [note, setNote] = useState('')
@@ -277,7 +297,7 @@ function ReviewAnswerForm({ order, onDone }: { order: Doc<'orders'>; onDone: () 
 
   return (
     <div className="flex flex-col gap-3">
-      <ReviewConversation orderId={order._id} />
+      <ReviewConversation orderId={order._id} executorNickname={executorNickname} />
       {showReject && (
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="review-note">Комментарий для эксперта (необязательно)</Label>
@@ -305,10 +325,19 @@ function ReviewAnswerForm({ order, onDone }: { order: Doc<'orders'>; onDone: () 
  * The full customer↔executor dialog the moderator verifies before closing.
  * The conversation is the deliverable now, so the admin reads the whole
  * thread here rather than a single answer artifact. Identities stay
- * anonymised (role labels only), matching the customer/executor surfaces.
+ * anonymised — the executor is labelled with the same handle the customer
+ * sees in their chat header, never the real name. Falls back to the generic
+ * «Эксперт» for profiles that predate nicknames.
  */
-function ReviewConversation({ orderId }: { orderId: Id<'orders'> }) {
+function ReviewConversation({
+  orderId,
+  executorNickname,
+}: {
+  orderId: Id<'orders'>
+  executorNickname: string | null
+}) {
   const messages = useQuery(api.messages.list, { orderId })
+  const executorLabel = executorNickname ?? 'Эксперт'
   return (
     <div className="flex flex-col gap-1.5">
       <p className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
@@ -335,7 +364,7 @@ function ReviewConversation({ orderId }: { orderId: Id<'orders'> }) {
                   m.senderRole === 'executor' ? 'text-status-work' : 'text-status-search',
                 )}
               >
-                {m.senderRole === 'executor' ? 'Эксперт' : 'Заказчик'}
+                {m.senderRole === 'executor' ? executorLabel : 'Заказчик'}
               </span>
               {m.body && <span className="ml-2 whitespace-pre-wrap">{m.body}</span>}
               {m.attachmentIds.length > 0 && (

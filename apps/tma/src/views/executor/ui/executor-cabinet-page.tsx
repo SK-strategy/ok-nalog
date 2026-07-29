@@ -16,7 +16,8 @@ import {
 } from 'lucide-react'
 
 import type { OrderStatus } from '@tax-assistant/validators'
-import { formatKopecks, formatRating, isTerminal } from '@tax-assistant/validators'
+import { StarRating } from '@tax-assistant/ui/star-rating'
+import { averageRating, formatKopecks, isTerminal } from '@tax-assistant/validators'
 
 import type { HomeMode } from '~/widgets/mode-switcher'
 import { ModeSwitcher } from '~/widgets/mode-switcher'
@@ -283,6 +284,7 @@ function ApprovedCabinet({
           balance={balance}
           lifetimeEarned={lifetimeEarned}
           completedCount={completedCount}
+          nickname={profile?.nickname ?? null}
           ratingSum={profile?.ratingSum ?? 0}
           ratingCount={profile?.ratingCount ?? 0}
         />
@@ -632,17 +634,33 @@ function BalanceCard({
   balance,
   lifetimeEarned,
   completedCount,
+  nickname,
   ratingSum,
   ratingCount,
 }: {
   balance: number
   lifetimeEarned: number
   completedCount: number
+  nickname: string | null
   ratingSum: number
   ratingCount: number
 }) {
   return (
     <div className="bg-primary-soft mx-4 rounded-2xl p-4">
+      {nickname && (
+        <div
+          className="border-primary/15 mb-3 flex items-center justify-between gap-2 border-b pb-3"
+        >
+          <div>
+            <div className="text-text-soft text-[11px] font-bold tracking-[0.06em] uppercase">
+              Для клиентов вы
+            </div>
+            <div className="text-foreground text-[15px] font-bold">{nickname}</div>
+          </div>
+          <StarRating value={averageRating(ratingSum, ratingCount)} count={ratingCount} showCount />
+        </div>
+      )}
+
       <div className="text-text-soft text-[12px] font-bold tracking-[0.06em] uppercase">
         Баланс к выплате
       </div>
@@ -655,14 +673,6 @@ function BalanceCard({
         <Stat
           label="Выполнено заявок"
           value={`${completedCount} ${pluralRu(completedCount, 'заявка', 'заявки', 'заявок')}`}
-        />
-        <Stat
-          label="Рейтинг"
-          value={
-            ratingCount > 0
-              ? `${formatRating(ratingSum, ratingCount)} · ${ratingCount} ${pluralRu(ratingCount, 'оценка', 'оценки', 'оценок')}`
-              : 'Пока нет оценок'
-          }
         />
       </div>
 

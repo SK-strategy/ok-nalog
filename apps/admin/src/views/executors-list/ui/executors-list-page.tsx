@@ -37,6 +37,7 @@ interface ExecutorRow {
   _id: string
   userId: string
   fullName: string
+  nickname?: string
   balance: number
   status: 'pending' | 'approved' | 'rejected'
   hasPendingChanges: boolean
@@ -229,6 +230,9 @@ export function ExecutorsListPage() {
                       image={row.user?.image}
                     />
                   </Link>
+                  {row.nickname && (
+                    <div className="text-muted-foreground mt-0.5 pl-11 text-xs">{row.nickname}</div>
+                  )}
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap items-center gap-1.5">

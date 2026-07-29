@@ -33,7 +33,8 @@
     "./checkbox": "./src/checkbox.tsx",
     "./scroll-area": "./src/scroll-area.tsx",
     "./kbd": "./src/kbd.tsx",
-    "./table": "./src/table.tsx"
+    "./table": "./src/table.tsx",
+    "./star-rating": "./src/star-rating.tsx"
   },
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",

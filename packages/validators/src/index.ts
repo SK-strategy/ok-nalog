@@ -3,6 +3,7 @@
 export * from './enums'
 export * from './constants'
 export * from './money'
+export * from './nickname'
 export * from './order-status'
 export * from './rating'
 export * from './schemas'

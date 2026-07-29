@@ -7,6 +7,7 @@ import { ArrowLeft, ClipboardList, Receipt } from 'lucide-react'
 
 import type { OrderStatus } from '@tax-assistant/validators'
 import { Skeleton } from '@tax-assistant/ui/skeleton'
+import { StarRating } from '@tax-assistant/ui/star-rating'
 import {
   Table,
   TableBody,
@@ -15,9 +16,10 @@ import {
   TableHeader,
   TableRow,
 } from '@tax-assistant/ui/table'
-import { formatKopecks, formatRating } from '@tax-assistant/validators'
+import { averageRating, formatKopecks } from '@tax-assistant/validators'
 
 import { ApproveActions, PendingChangesCard } from '~/features/executor-approve'
+import { NicknameEditor } from '~/features/executor-nickname'
 import { PayoutButton } from '~/features/executor-payout'
 import { useSession } from '~/entities/session'
 import type { Id } from '~/shared/api'
@@ -95,7 +97,14 @@ export function ExecutorDetailPage({ profileId }: ExecutorDetailPageProps) {
             >
               <ArrowLeft className="size-3.5" />К списку исполнителей
             </Link>
-            <span>{profile.fullName}</span>
+            <span className="flex items-center gap-2">
+              {profile.fullName}
+              {profile.nickname && (
+                <span className="text-muted-foreground text-sm font-normal">
+                  · {profile.nickname}
+                </span>
+              )}
+            </span>
           </div>
         }
         description={
@@ -144,6 +153,8 @@ export function ExecutorDetailPage({ profileId }: ExecutorDetailPageProps) {
             </div>
           )}
 
+          <NicknameEditor profileId={profile._id} nickname={profile.nickname} />
+
           <Field label="О себе" value={profile.bio} />
           <Field label="Квалификация" value={profile.qualifications} />
           <Field
@@ -169,11 +180,12 @@ export function ExecutorDetailPage({ profileId }: ExecutorDetailPageProps) {
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-muted-foreground text-xs">Рейтинг ответов</span>
-            <span className="text-lg font-semibold tabular-nums">
-              {(profile.ratingCount ?? 0) > 0
-                ? `${formatRating(profile.ratingSum ?? 0, profile.ratingCount ?? 0)} / 10 · ${profile.ratingCount} оценок`
-                : '— нет оценок'}
-            </span>
+            <StarRating
+              value={averageRating(profile.ratingSum ?? 0, profile.ratingCount ?? 0)}
+              count={profile.ratingCount ?? 0}
+              showCount
+              size="md"
+            />
           </div>
           <div className="border-t pt-3">
             <h3

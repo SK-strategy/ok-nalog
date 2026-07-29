@@ -109,7 +109,25 @@ export const get = query({
     const category = await ctx.db.get(order.categoryId)
     const tag = order.tagId ? await ctx.db.get(order.tagId) : null
     const view = role === 'customer' ? forCustomer(order) : anonymize(order, role)
-    return { order: view, category, tag, role }
+    // The assigned executor's public face: nickname + reputation only — never
+    // the real name or id, so it's safe to hand to the customer alongside the
+    // anonymized order.
+    let executor: { nickname: string | null; ratingSum: number; ratingCount: number } | null = null
+    const executorUserId = order.assignedExecutorId
+    if (executorUserId) {
+      const profile = await ctx.db
+        .query('executorProfiles')
+        .withIndex('by_user', (q) => q.eq('userId', executorUserId))
+        .unique()
+      if (profile) {
+        executor = {
+          nickname: profile.nickname ?? null,
+          ratingSum: profile.ratingSum ?? 0,
+          ratingCount: profile.ratingCount ?? 0,
+        }
+      }
+    }
+    return { order: view, category, tag, role, executor }
   },
 })
 
@@ -212,7 +230,18 @@ export const adminGet = query({
     // User identity lookups go through better-auth's component; admin UI
     // typically only needs ids/usernames which can be fetched via
     // authComponent.getAnyUserById on demand.
-    return { order, category }
+    //
+    // The executor's handle comes along so the moderation dialog labels the
+    // conversation with the same name the customer sees, rather than a
+    // generic «Эксперт».
+    const executorUserId = order.assignedExecutorId
+    const executorProfile = executorUserId
+      ? await ctx.db
+          .query('executorProfiles')
+          .withIndex('by_user', (q) => q.eq('userId', executorUserId))
+          .unique()
+      : null
+    return { order, category, executorNickname: executorProfile?.nickname ?? null }
   },
 })
 
@@ -649,6 +678,6 @@ export const rateOrder = mutation({
     if (order.assignedExecutorId) {
       await recordRating(ctx, order.assignedExecutorId, score)
     }
-    await postSystem(ctx, orderId, `Заказчик оценил ответ: ${score}/10`)
+    await postSystem(ctx, orderId, `Заказчик оценил ответ: ${score}/5`)
   },
 })

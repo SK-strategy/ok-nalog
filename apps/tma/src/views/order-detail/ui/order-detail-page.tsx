@@ -1,13 +1,15 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery } from 'convex/react'
-import { Check, RotateCcw, X } from 'lucide-react'
+import { Check, RotateCcw, Star, X } from 'lucide-react'
 
 import type { OrderStatus } from '@tax-assistant/validators'
 import { Button } from '@tax-assistant/ui/button'
 import { Input } from '@tax-assistant/ui/input'
-import { formatKopecks } from '@tax-assistant/validators'
+import { StarRating } from '@tax-assistant/ui/star-rating'
+import { averageRating, formatKopecks, RATING_MAX } from '@tax-assistant/validators'
 
 import { TmaScreen } from '~/widgets/tma-shell'
 import { OrderChat } from '~/features/order-chat'
@@ -22,6 +24,8 @@ type Order = Omit<Doc<'orders'>, 'customerId' | 'assignedExecutorId'>
 type Category = Doc<'categories'>
 type Tag = Doc<'tags'>
 type Role = 'customer' | 'executor' | 'admin'
+// The assigned executor's public face (nickname + reputation), from orders.get.
+type ExecutorFace = { nickname: string | null; ratingSum: number; ratingCount: number } | null
 
 const NBSP = ' '
 
@@ -29,7 +33,8 @@ const NBSP = ' '
  * /orders/[orderId] — chat-style ticket.
  *
  * Header shows the (anonymized) counterparty: "Налоговый помощник" until an
- * executor is assigned, then "Эксперт" with the topic from the order's tag.
+ * executor is assigned, then the executor's nickname («Мудрый Барсук») with
+ * their stars and the topic from the order's tag.
  * The body is a vertical timeline — the original description as the
  * customer's first bubble, then every chat message including system events,
  * then status-driven action cards inline (Оплатить, Принять ответ, …).
@@ -50,8 +55,8 @@ export function OrderDetailPage({ orderId }: { orderId: Id<'orders'> }) {
     )
   }
 
-  const { order, category, tag, role } = data
-  const header = headerFor(role, order, category, tag)
+  const { order, category, tag, role, executor } = data
+  const header = headerFor(role, order, category, tag, executor)
   const orderNum = shortNum(order._id)
 
   return (
@@ -85,14 +90,29 @@ function headerFor(
   order: Order,
   category: Category | null,
   tag: Tag | null,
-): { title: string; subtitle: string } {
+  executor: ExecutorFace,
+): { title: string; subtitle: ReactNode } {
   const assigned = ASSIGNED_STATES.has(order.status)
   if (role === 'customer') {
     if (assigned) {
       const creds = tag?.name ?? category?.title
+      const credLabel = creds ? `по ${creds}` : (EXECUTOR_STATE_LABEL[order.status] ?? 'В работе')
+      const rated = executor && executor.ratingCount > 0
       return {
-        title: 'Эксперт',
-        subtitle: creds ? `по ${creds}` : (EXECUTOR_STATE_LABEL[order.status] ?? 'В работе'),
+        // The executor's identity-hiding handle; falls back to the generic
+        // label for profiles that predate nicknames.
+        title: executor?.nickname ?? 'Эксперт',
+        subtitle: rated ? (
+          <span className="inline-flex items-center gap-1.5">
+            <StarRating
+              value={averageRating(executor.ratingSum, executor.ratingCount)}
+              showValue={false}
+            />
+            <span>· {credLabel}</span>
+          </span>
+        ) : (
+          credLabel
+        ),
       }
     }
     return {
@@ -269,7 +289,15 @@ function ActionSlot({ order, role }: { order: Order; role: Role }) {
           <ActionCard
             tone="done"
             title="Заявка завершена"
-            body={`Ваша оценка ответа: ${order.rating ?? '—'}/10`}
+            body={
+              order.rating ? (
+                <span className="inline-flex items-center gap-1.5">
+                  Ваша оценка: <StarRating value={order.rating} showValue={false} />
+                </span>
+              ) : (
+                'Заявка закрыта.'
+              )
+            }
           />
         </div>
       )
@@ -565,32 +593,40 @@ function AnswerCard({ body }: { body: string }) {
 function RatingCard({ orderId }: { orderId: Id<'orders'> }) {
   const rate = useMutation(api.orders.rateOrder)
   const [busy, setBusy] = useState(false)
+  const [hover, setHover] = useState(0)
   return (
     <ActionCard
       tone="done"
       title="Оцените ответ"
-      body="Насколько ответ вам помог? 1 — совсем не устраивает, 10 — супер."
+      body="Насколько эксперт вам помог? 1 звезда — совсем нет, 5 — отлично."
     >
-      {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-        <button
-          key={n}
-          type="button"
-          disabled={busy}
-          onClick={async () => {
-            setBusy(true)
-            try {
-              await rate({ orderId, score: n })
-            } finally {
-              setBusy(false)
-            }
-          }}
-          className="bg-secondary text-foreground hover:bg-primary hover:text-primary-foreground
-            flex size-8 items-center justify-center rounded-lg text-sm font-semibold tabular-nums
-            transition-colors disabled:opacity-50"
-        >
-          {n}
-        </button>
-      ))}
+      <div className="flex items-center gap-1.5" onMouseLeave={() => setHover(0)}>
+        {Array.from({ length: RATING_MAX }, (_, i) => i + 1).map((n) => (
+          <button
+            key={n}
+            type="button"
+            disabled={busy}
+            aria-label={`Оценка ${n} из ${RATING_MAX}`}
+            onMouseEnter={() => setHover(n)}
+            onClick={async () => {
+              setBusy(true)
+              try {
+                await rate({ orderId, score: n })
+              } finally {
+                setBusy(false)
+              }
+            }}
+            className="p-0.5 transition-transform active:scale-90 disabled:opacity-50"
+          >
+            <Star
+              className={cn(
+                'size-8',
+                n <= hover ? 'fill-amber-400 text-amber-400' : 'text-foreground/25',
+              )}
+            />
+          </button>
+        ))}
+      </div>
     </ActionCard>
   )
 }

@@ -1,7 +1,52 @@
 import { ConvexError, v } from 'convex/values'
 
-import { mutation, query } from './_generated/server'
+import {
+  isValidNickname,
+  NICKNAME_MAX_LENGTH,
+  NICKNAME_MIN_LENGTH,
+  nicknameKey,
+  normalizeNickname,
+  randomNickname,
+} from '@tax-assistant/validators'
+
+import type { MutationCtx } from './_generated/server'
+import { internalMutation, mutation, query } from './_generated/server'
 import { requireAdmin, requireUser } from './lib/auth'
+
+/**
+ * Every handle currently in use, as case-insensitive comparison keys. Handles
+ * are rare and short-lived to compute, so a full scan is fine at our scale.
+ */
+async function takenNicknameKeys(ctx: MutationCtx, exclude?: string): Promise<Set<string>> {
+  const profiles = await ctx.db.query('executorProfiles').collect()
+  const keys = new Set<string>()
+  for (const p of profiles) {
+    if (!p.nickname || p._id === exclude) continue
+    keys.add(nicknameKey(p.nickname))
+  }
+  return keys
+}
+
+/**
+ * A «Прилагательное Животное» handle not already taken by another profile.
+ * The word lists give ~400 combinations — ample headroom at our scale — so a
+ * handful of tries almost always lands a free one; a numeric suffix is the
+ * last-resort fallback.
+ *
+ * The caller's own current handle is intentionally *not* excluded from the
+ * taken set, so a re-roll always lands on something different.
+ */
+async function generateUniqueNickname(ctx: MutationCtx): Promise<string> {
+  const taken = await takenNicknameKeys(ctx)
+  for (let i = 0; i < 40; i++) {
+    const candidate = randomNickname()
+    if (!taken.has(nicknameKey(candidate))) return candidate
+  }
+  const base = randomNickname()
+  let n = 2
+  while (taken.has(nicknameKey(`${base} ${n}`))) n++
+  return `${base} ${n}`
+}
 
 // Executor анкета lifecycle: a user applies → admin approves/rejects →
 // approved users get role 'executor' (derived from profile.status) and can be
@@ -52,6 +97,7 @@ export const apply = mutation({
     return ctx.db.insert('executorProfiles', {
       userId: user._id,
       fullName,
+      nickname: await generateUniqueNickname(ctx),
       bio,
       qualifications,
       categoryIds,
@@ -60,6 +106,53 @@ export const apply = mutation({
       createdAt: now,
       updatedAt: now,
     })
+  },
+})
+
+/**
+ * One-off: assign a nickname to every profile created before nicknames
+ * existed. Idempotent — skips profiles that already have one. Run via
+ * `npx convex run executors:backfillNicknames`.
+ */
+export const backfillNicknames = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const profiles = await ctx.db.query('executorProfiles').collect()
+    let assigned = 0
+    for (const p of profiles) {
+      if (p.nickname) continue
+      await ctx.db.patch(p._id, {
+        nickname: await generateUniqueNickname(ctx),
+        updatedAt: Date.now(),
+      })
+      assigned++
+    }
+    return { assigned }
+  },
+})
+
+/**
+ * One-off: reset all executor reputation to zero for the switch from the 1–10
+ * scale to 1–5 stars. Clears the denormalised counters and drops any stored
+ * order rating so nothing shows a stale out-of-range value. Run via
+ * `npx convex run executors:resetRatings`.
+ */
+export const resetRatings = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now()
+    const profiles = await ctx.db.query('executorProfiles').collect()
+    for (const p of profiles) {
+      await ctx.db.patch(p._id, { ratingSum: 0, ratingCount: 0, updatedAt: now })
+    }
+    const rated = await ctx.db
+      .query('orders')
+      .filter((q) => q.neq(q.field('rating'), undefined))
+      .collect()
+    for (const o of rated) {
+      await ctx.db.patch(o._id, { rating: undefined, ratedAt: undefined })
+    }
+    return { profiles: profiles.length, orders: rated.length }
   },
 })
 
@@ -258,7 +351,8 @@ export const adminListAll = query({
           assignedOrderCount: assigned.length,
           completedOrderCount: assigned.filter((o) => o.status === 'completed').length,
           activeOrderCount: assigned.filter(
-            (o) => o.status === 'assigned' || o.status === 'in_progress' || o.status === 'answered',
+            (o) =>
+              o.status === 'assigned' || o.status === 'in_progress' || o.status === 'under_review',
           ).length,
         }
       }),
@@ -342,5 +436,54 @@ export const adminGet = query({
       transactions,
       orders: orderRows,
     }
+  },
+})
+
+/**
+ * Admin: override an executor's public handle with free text.
+ *
+ * Admin-only on purpose — the handle is the customer-facing identity, so
+ * executors can't churn it between orders. Uniqueness is case-insensitive:
+ * two handles that read the same to a customer must not coexist.
+ */
+export const adminSetNickname = mutation({
+  args: { profileId: v.id('executorProfiles'), nickname: v.string() },
+  handler: async (ctx, { profileId, nickname }) => {
+    await requireAdmin(ctx)
+    const profile = await ctx.db.get(profileId)
+    if (!profile) throw new ConvexError({ code: 'NOT_FOUND', message: 'Анкета не найдена' })
+
+    const value = normalizeNickname(nickname)
+    if (!isValidNickname(value)) {
+      throw new ConvexError({
+        code: 'INVALID_NICKNAME',
+        message: `Псевдоним: от ${NICKNAME_MIN_LENGTH} до ${NICKNAME_MAX_LENGTH} символов, без служебных знаков`,
+      })
+    }
+    const taken = await takenNicknameKeys(ctx, profileId)
+    if (taken.has(nicknameKey(value))) {
+      throw new ConvexError({ code: 'NICKNAME_TAKEN', message: 'Такой псевдоним уже занят' })
+    }
+
+    await ctx.db.patch(profileId, { nickname: value, updatedAt: Date.now() })
+    return value
+  },
+})
+
+/**
+ * Admin: roll a fresh «Прилагательное Животное» handle for an executor,
+ * replacing whatever they have now. Returns the new handle so the form can
+ * show it without waiting for the query to round-trip.
+ */
+export const adminRegenerateNickname = mutation({
+  args: { profileId: v.id('executorProfiles') },
+  handler: async (ctx, { profileId }) => {
+    await requireAdmin(ctx)
+    const profile = await ctx.db.get(profileId)
+    if (!profile) throw new ConvexError({ code: 'NOT_FOUND', message: 'Анкета не найдена' })
+
+    const nickname = await generateUniqueNickname(ctx)
+    await ctx.db.patch(profileId, { nickname, updatedAt: Date.now() })
+    return nickname
   },
 })
