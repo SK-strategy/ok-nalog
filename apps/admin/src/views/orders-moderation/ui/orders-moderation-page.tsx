@@ -24,7 +24,7 @@ import { OrderActionDialog } from '~/features/order-moderation'
 import { useSession } from '~/entities/session'
 import type { Id } from '~/shared/api'
 import { api } from '~/shared/api'
-import { formatDate, shortId, useSort } from '~/shared/lib'
+import { formatDate, shortId, useNow, useSort } from '~/shared/lib'
 import {
   DataTable,
   EmptyState,
@@ -32,6 +32,8 @@ import {
   PageHeader,
   SortHeader,
   UserCell,
+  WaitingCell,
+  waitingSince,
 } from '~/shared/ui'
 
 const ATTENTION_STATUSES: ReadonlySet<OrderStatus> = new Set([
@@ -83,6 +85,12 @@ interface OrderRow {
   quotedPrice: number
   approvedPrice?: number
   createdAt: number
+  // Milestone stamps behind the "Ожидание" clock — which one applies depends
+  // on the status (see `waitingSince`).
+  paidAt?: number
+  reviewedAt?: number
+  assignedAt?: number
+  paymentDeadlineAt?: number
   customer: {
     _id: string
     name: string
@@ -97,10 +105,12 @@ interface OrderRow {
   } | null
 }
 
-type SortColumn = 'status' | 'createdAt' | 'price' | 'category'
+type SortColumn = 'status' | 'createdAt' | 'price' | 'category' | 'waiting'
 
 export function OrdersModerationPage() {
   const { isAuthenticated } = useSession()
+  // One clock for the whole table — see `useNow`.
+  const now = useNow()
   const orders = useQuery(api.orders.adminListAll, isAuthenticated ? {} : 'skip') as
     | OrderRow[]
     | undefined
@@ -129,6 +139,11 @@ export function OrdersModerationPage() {
       createdAt: (r: OrderRow) => r.createdAt,
       price: (r: OrderRow) => r.approvedPrice ?? r.quotedPrice,
       category: (r: OrderRow) => r.categoryTitle?.toLowerCase() ?? '',
+      // Sort by the waiting *start*, so ascending = longest-waiting first,
+      // which is the order an admin wants to work through. Rows with no clock
+      // (in flight, closed) sort to the end either way rather than pretending
+      // to have waited since the epoch.
+      waiting: (r: OrderRow) => waitingSince(r)?.since ?? Number.MAX_SAFE_INTEGER,
     }),
     [],
   )
@@ -215,6 +230,14 @@ export function OrdersModerationPage() {
                   onToggle={() => toggle('status')}
                 />
               </TableHead>
+              <TableHead className="min-w-[170px]">
+                <SortHeader
+                  label="Ожидание"
+                  active={isActive('waiting')}
+                  dir={dir}
+                  onToggle={() => toggle('waiting')}
+                />
+              </TableHead>
               <TableHead>
                 <SortHeader
                   label="Создана"
@@ -230,7 +253,7 @@ export function OrdersModerationPage() {
             {orders === undefined && <OrdersSkeleton />}
             {orders && sorted.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8}>
+                <TableCell colSpan={9}>
                   <EmptyState
                     icon={<ClipboardList className="size-8" />}
                     title={
@@ -308,6 +331,9 @@ export function OrdersModerationPage() {
                   <TableCell>
                     <OrderStatusBadge status={row.status} />
                   </TableCell>
+                  <TableCell>
+                    <WaitingCell order={row} now={now} />
+                  </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
                     {formatDate(row.createdAt)}
                   </TableCell>
@@ -368,7 +394,7 @@ function OrdersSkeleton() {
     <>
       {Array.from({ length: 6 }).map((_, i) => (
         <TableRow key={i}>
-          {Array.from({ length: 8 }).map((__, j) => (
+          {Array.from({ length: 9 }).map((__, j) => (
             <TableCell key={j}>
               <Skeleton className="h-5 w-24" />
             </TableCell>

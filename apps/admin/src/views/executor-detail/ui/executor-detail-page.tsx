@@ -115,7 +115,11 @@ export function ExecutorDetailPage({ profileId }: ExecutorDetailPageProps) {
         }
         actions={
           profile.status === 'approved' ? (
-            <PayoutButton profileId={profile._id} balance={profile.balance} />
+            <PayoutButton
+              profileId={profile._id}
+              balance={profile.balance}
+              executorName={profile.fullName}
+            />
           ) : profile.status === 'pending' ? (
             <ApproveActions profileId={profile._id} />
           ) : null

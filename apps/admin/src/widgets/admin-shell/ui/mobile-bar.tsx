@@ -1,21 +1,18 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { useQuery } from 'convex/react'
 
 import { cn } from '@tax-assistant/ui'
 
 import { SidebarLink } from '~/widgets/admin-shell/ui/sidebar-link'
-import { api } from '~/shared/api'
 
 import { isNavActive, NAV_ITEMS } from '../lib/nav'
+import { useNavBadges } from '../lib/use-nav-badges'
 
 /** Compact horizontal nav for narrow viewports (md and below). */
 export function MobileBar({ className }: { className?: string }) {
   const pathname = usePathname()
-  const pendingExecutors = useQuery(api.executors.pendingCount, {})
-  const pendingChanges = useQuery(api.executors.pendingChangesCount, {})
-  const executorsBadge = (pendingExecutors ?? 0) + (pendingChanges ?? 0)
+  const badgeFor = useNavBadges()
 
   return (
     <nav
@@ -24,17 +21,21 @@ export function MobileBar({ className }: { className?: string }) {
         className,
       )}
     >
-      {NAV_ITEMS.map((item) => (
-        <div key={item.href} className="shrink-0">
-          <SidebarLink
-            href={item.href}
-            label={item.label}
-            icon={item.icon}
-            active={isNavActive(item.href, pathname)}
-            badge={item.badgeKey === 'executorsPending' ? executorsBadge : undefined}
-          />
-        </div>
-      ))}
+      {NAV_ITEMS.map((item) => {
+        const badge = badgeFor(item)
+        return (
+          <div key={item.href} className="shrink-0">
+            <SidebarLink
+              href={item.href}
+              label={item.label}
+              icon={item.icon}
+              active={isNavActive(item.href, pathname)}
+              badge={badge?.count}
+              badgeReason={badge?.reason}
+            />
+          </div>
+        )
+      })}
     </nav>
   )
 }

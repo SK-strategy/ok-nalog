@@ -2,6 +2,7 @@ import { ConvexError, v } from 'convex/values'
 
 import {
   CLAIMABLE_STATUSES,
+  isTerminal,
   isValidRating,
   orderStatusSchema,
   PAYMENT_WINDOW_MS,
@@ -40,6 +41,15 @@ function forCustomer(order: Doc<'orders'>) {
   return rest
 }
 
+/**
+ * Cap on attached history. High enough that nobody hits it in normal use, low
+ * enough that `linkedHistory` can't be turned into an unbounded fan-out of
+ * thread reads on one query.
+ */
+const MAX_LINKED_ORDERS = 5
+
+const dedupe = <T>(xs: T[]): T[] => [...new Set(xs)]
+
 // ── Customer ────────────────────────────────────────────────────────────────
 
 export const create = mutation({
@@ -51,8 +61,12 @@ export const create = mutation({
     clientType: v.optional(
       v.union(v.literal('legal_entity_ie'), v.literal('individual'), v.literal('npd_payer')),
     ),
+    linkedOrderIds: v.optional(v.array(v.id('orders'))),
   },
-  handler: async (ctx, { categoryId, description, attachmentIds, tagId, clientType }) => {
+  handler: async (
+    ctx,
+    { categoryId, description, attachmentIds, tagId, clientType, linkedOrderIds },
+  ) => {
     const user = await requireUser(ctx)
     const category = await ctx.db.get(categoryId)
     if (!category?.isActive) {
@@ -64,6 +78,31 @@ export const create = mutation({
         throw new ConvexError({ code: 'BAD_TAG', message: 'Тег недоступен' })
       }
     }
+    // Attaching history hands a future expert a whole past conversation, so
+    // the ids are checked here rather than trusted from the client: each must
+    // be the caller's OWN заявка and already closed. Without the ownership
+    // check, a crafted request would turn this into a way to read anyone's
+    // thread by attaching their order id to a throwaway question.
+    const linked = dedupe(linkedOrderIds ?? [])
+    if (linked.length > MAX_LINKED_ORDERS) {
+      throw new ConvexError({
+        code: 'TOO_MANY_LINKS',
+        message: `Можно прикрепить не более ${MAX_LINKED_ORDERS} прошлых обращений`,
+      })
+    }
+    for (const id of linked) {
+      const prior = await ctx.db.get(id)
+      if (!prior || prior.customerId !== user._id) {
+        throw new ConvexError({ code: 'BAD_LINK', message: 'Обращение недоступно' })
+      }
+      if (!isTerminal(prior.status)) {
+        throw new ConvexError({
+          code: 'BAD_LINK',
+          message: 'Прикрепить можно только завершённое обращение',
+        })
+      }
+    }
+
     const now = Date.now()
     const orderId = await ctx.db.insert('orders', {
       customerId: user._id,
@@ -72,6 +111,7 @@ export const create = mutation({
       clientType,
       description,
       attachmentIds,
+      linkedOrderIds: linked.length > 0 ? linked : undefined,
       status: 'submitted',
       quotedPrice: category.basePrice, // snapshot
       createdAt: now,
@@ -83,7 +123,13 @@ export const create = mutation({
       .withIndex('by_user', (q) => q.eq('userId', user._id))
       .unique()
     if (draft) await ctx.db.delete(draft._id)
-    await postSystem(ctx, orderId, 'Заявка добавлена в очередь экспертов')
+    // NOT «добавлена в очередь экспертов» — a fresh order is `submitted`, and
+    // executors only ever see it once it's `paid` (CLAIMABLE_STATUSES). The
+    // queue message belongs on the payment step; announcing it here claimed
+    // something untrue and read out of order above pricing in the timeline.
+    // Naming what the заявка is actually waiting for also makes the first
+    // timeline entry match the first real step of the flow.
+    await postSystem(ctx, orderId, 'Заявка создана. Ожидает утверждения стоимости')
     return orderId
   },
 })
@@ -109,9 +155,14 @@ export const get = query({
     const category = await ctx.db.get(order.categoryId)
     const tag = order.tagId ? await ctx.db.get(order.tagId) : null
     const view = role === 'customer' ? forCustomer(order) : anonymize(order, role)
-    // The assigned executor's public face: nickname + reputation only — never
-    // the real name or id, so it's safe to hand to the customer alongside the
-    // anonymized order.
+    // The assigned executor's reputation, and — for staff only — their handle.
+    //
+    // The псевдоним is NOT a customer-facing display name. It's internal
+    // cover between the admin and the experts working for him, so the client
+    // sees an anonymous «Эксперт» and never learns that a given заявка was
+    // handled by «Мудрый Барсук». Withholding it here rather than hiding it in
+    // the UI keeps it off the wire entirely. Ratings stay visible to everyone —
+    // those are about the answer, not about who wrote it.
     let executor: { nickname: string | null; ratingSum: number; ratingCount: number } | null = null
     const executorUserId = order.assignedExecutorId
     if (executorUserId) {
@@ -121,13 +172,100 @@ export const get = query({
         .unique()
       if (profile) {
         executor = {
-          nickname: profile.nickname ?? null,
+          nickname: role === 'customer' ? null : (profile.nickname ?? null),
           ratingSum: profile.ratingSum ?? 0,
           ratingCount: profile.ratingCount ?? 0,
         }
       }
     }
     return { order: view, category, tag, role, executor }
+  },
+})
+
+/**
+ * The caller's own closed заявки, as picker options for "прикрепить прошлое
+ * обращение". Titles only — enough to recognise a past question without
+ * shipping every thread to the compose screen.
+ */
+export const myClosedOrders = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUser(ctx)
+    const orders = await ctx.db
+      .query('orders')
+      .withIndex('by_customer', (q) => q.eq('customerId', user._id))
+      .order('desc')
+      .collect()
+    const closed = orders.filter((o) => isTerminal(o.status))
+    return Promise.all(
+      closed.map(async (o) => {
+        const category = await ctx.db.get(o.categoryId)
+        return {
+          _id: o._id,
+          description: o.description,
+          status: o.status,
+          categoryTitle: category?.title ?? null,
+          createdAt: o.createdAt,
+          completedAt: o.completedAt,
+        }
+      }),
+    )
+  },
+})
+
+/**
+ * The closed заявки attached to this order, each with its full dialog —
+ * the payload behind "оба тикета эксперт сможет видеть".
+ *
+ * Access is derived from the CURRENT order: any of its participants (customer,
+ * assigned expert, admin) may read the attached history, because the customer
+ * explicitly attached it for exactly that purpose. `loadParticipant` throws for
+ * anyone else, so the linked ids can't be used to reach unrelated threads.
+ *
+ * Staff-only lines from the old threads are filtered out for the customer here
+ * too, on the same rule as `messages.list`.
+ */
+export const linkedHistory = query({
+  args: { orderId: v.id('orders') },
+  handler: async (ctx, { orderId }) => {
+    const { order, role } = await loadParticipant(ctx, orderId)
+    const linkedIds = order.linkedOrderIds ?? []
+    if (linkedIds.length === 0) return []
+
+    return Promise.all(
+      linkedIds.map(async (id) => {
+        const prior = await ctx.db.get(id)
+        // Defensive: the attachment was validated at create time, but re-check
+        // rather than trusting a stored id to still point at this customer's
+        // own order.
+        if (!prior || prior.customerId !== order.customerId) return null
+        const category = await ctx.db.get(prior.categoryId)
+        const messages = await ctx.db
+          .query('messages')
+          .withIndex('by_order', (q) => q.eq('orderId', id))
+          .order('asc')
+          .collect()
+        const visible =
+          role === 'customer' ? messages.filter((m) => (m.audience ?? 'all') !== 'staff') : messages
+        return {
+          _id: prior._id,
+          description: prior.description,
+          attachmentIds: prior.attachmentIds,
+          status: prior.status,
+          categoryTitle: category?.title ?? null,
+          createdAt: prior.createdAt,
+          completedAt: prior.completedAt,
+          rating: prior.rating,
+          messages: visible.map((m) => ({
+            _id: m._id,
+            senderRole: m.senderRole,
+            body: m.body,
+            attachmentIds: m.attachmentIds,
+            createdAt: m.createdAt,
+          })),
+        }
+      }),
+    ).then((rows) => rows.filter((r) => r !== null))
   },
 })
 
@@ -204,6 +342,49 @@ export const adminListAll = query({
         }
       }),
     )
+  },
+})
+
+/**
+ * Statuses where the заявка is parked waiting on the ADMIN specifically — not
+ * on the client and not on the expert. These are the rows the moderation table
+ * highlights and the sidebar counts.
+ *
+ * Deliberately excludes `awaiting_payment` (client's move), `assigned` /
+ * `in_progress` (expert has it) and every terminal status. A badge that counts
+ * things the admin can't act on is a badge they learn to ignore.
+ */
+const ADMIN_ATTENTION_STATUSES: Doc<'orders'>['status'][] = [
+  'submitted', // needs pricing
+  'paid', // needs an executor
+  'under_review', // needs the dialog reviewed
+  'payment_expired', // needs the payment window reopened (or dropping)
+]
+
+/**
+ * Live counts for the admin sidebar badge, broken out by what's actually
+ * needed. The breakdown lets the UI say *why* something is red ("эксперт ждёт
+ * проверки" vs "клиент ждёт оценки") instead of just showing a number.
+ */
+export const attentionCounts = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx)
+    const counts = { pricing: 0, assignment: 0, review: 0, expired: 0 }
+    for (const status of ADMIN_ATTENTION_STATUSES) {
+      const rows = await ctx.db
+        .query('orders')
+        .withIndex('by_status', (q) => q.eq('status', status))
+        .collect()
+      if (status === 'submitted') counts.pricing = rows.length
+      else if (status === 'paid') counts.assignment = rows.length
+      else if (status === 'under_review') counts.review = rows.length
+      else counts.expired = rows.length
+    }
+    return {
+      ...counts,
+      total: counts.pricing + counts.assignment + counts.review + counts.expired,
+    }
   },
 })
 
@@ -299,7 +480,10 @@ export const markPaid = mutation({
     if (payment?.status === 'pending') {
       await ctx.db.patch(payment._id, { status: 'succeeded', paidAt: now })
     }
-    await postSystem(ctx, orderId, 'Оплата получена')
+    // `paid` is the moment the order actually enters the executor pool, so the
+    // queue line lives here. One pill per real transition, same two-clause
+    // shape as the pricing message.
+    await postSystem(ctx, orderId, 'Оплата получена. Заявка добавлена в очередь экспертов')
   },
 })
 
@@ -398,10 +582,14 @@ export const adminSetStatus = mutation({
     if (target === 'completed' && order.assignedExecutorId && order.approvedPrice) {
       await accrueForOrder(ctx, order.assignedExecutorId, orderId, order.approvedPrice)
     }
+    // Staff-only: an internal audit line. The customer already sees where the
+    // заявка stands from its status badge — "администратор изменил статус"
+    // exposes back-office mechanics without telling them anything new.
     await postSystem(
       ctx,
       orderId,
       `Администратор изменил статус: ${STATUS_LOG_LABEL[order.status]} → ${STATUS_LOG_LABEL[target]}`,
+      'staff',
     )
   },
 })
@@ -615,7 +803,9 @@ export const submitForReview = mutation({
       throw new ConvexError({ code: 'EMPTY_DIALOG', message: 'Сначала ответьте заказчику в чате' })
     }
     await transition(ctx, order, 'under_review', { reviewedAt: Date.now() })
-    await postSystem(ctx, orderId, 'Диалог отправлен на проверку модератору')
+    // Staff-only: the review gate is between the эксперт and the модератор.
+    // The customer is told the answer is ready once it actually passes.
+    await postSystem(ctx, orderId, 'Диалог отправлен на проверку модератору', 'staff')
   },
 })
 
@@ -649,10 +839,15 @@ export const rejectReview = mutation({
     if (!order) throw new ConvexError({ code: 'NOT_FOUND', message: 'Заявка не найдена' })
     await transition(ctx, order, 'in_progress')
     const trimmed = note.trim()
+    // Staff-only, and the whole point of the audience split: this is the
+    // модератор briefing the эксперт on what to fix. Showing the заказчик
+    // «доработайте ответ» — let alone the admin's critique of it — undermines
+    // the expert in front of the client they're serving.
     await postSystem(
       ctx,
       orderId,
       trimmed ? `Диалог отправлен на доработку: ${trimmed}` : 'Диалог отправлен на доработку',
+      'staff',
     )
   },
 })

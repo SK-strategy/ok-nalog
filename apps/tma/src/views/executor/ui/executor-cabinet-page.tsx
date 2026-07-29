@@ -396,6 +396,25 @@ function TrustFooter({ text }: { text: string }) {
 }
 
 // ─── submitted-анкета preview ────────────────────────────────────────────
+/**
+ * The позывной, shown read-only inside the анкета.
+ *
+ * It's assigned automatically at `executors.apply` and is not an editable
+ * field — the эксперт can't choose it, and nothing in the form writes it. It
+ * needs to be visible from the moment the анкета is submitted (i.e. on the
+ * pending screen too, before there's any cabinet or balance to look at),
+ * because it's the name the админ will use to refer to this person.
+ */
+function NicknameRow({ nickname }: { nickname: string | null }) {
+  if (!nickname) return null
+  return (
+    <p className="text-text-soft mt-0.5 text-[12px]">
+      Позывной: <span className="text-foreground font-semibold">{nickname}</span>
+      <span className="text-hint"> · клиенты его не видят</span>
+    </p>
+  )
+}
+
 function SubmittedPreview({
   profile,
   categoryById,
@@ -433,6 +452,7 @@ function SubmittedPreview({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-foreground truncate text-[15px] font-semibold">{profile.fullName}</p>
+            <NicknameRow nickname={profile.nickname ?? null} />
             {categoryById && categoryTitles.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {categoryTitles.map((title) => (
@@ -653,9 +673,15 @@ function BalanceCard({
         >
           <div>
             <div className="text-text-soft text-[11px] font-bold tracking-[0.06em] uppercase">
-              Для клиентов вы
+              Ваш позывной
             </div>
             <div className="text-foreground text-[15px] font-bold">{nickname}</div>
+            {/* The handle is cover between the эксперт and the админ, not a
+             *  display name — clients see an anonymous «Эксперт». Say so, or
+             *  it reads as a public alias (which is what it used to be). */}
+            <div className="text-text-soft mt-0.5 text-[11px]">
+              Для связи с админом. Клиенты его не видят
+            </div>
           </div>
           <StarRating value={averageRating(ratingSum, ratingCount)} count={ratingCount} showCount />
         </div>

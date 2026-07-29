@@ -22,8 +22,10 @@ import { formatKopecks, kopecksToRubles, rublesToKopecks } from '@tax-assistant/
 
 import type { Doc, Id } from '~/shared/api'
 import { api } from '~/shared/api'
-import { formatDateTime, shortId } from '~/shared/lib'
-import { ORDER_STATUS_LABEL, OrderStatusBadge } from '~/shared/ui'
+import { formatDateTime, shortId, useNow } from '~/shared/lib'
+import { ORDER_STATUS_LABEL, OrderStatusBadge, WaitingCell } from '~/shared/ui'
+
+import { ReviewConversation } from './review-conversation'
 
 interface OrderActionDialogProps {
   orderId: Id<'orders'> | null
@@ -39,9 +41,16 @@ interface OrderActionDialogProps {
 export function OrderActionDialog({ orderId, open, onOpenChange }: OrderActionDialogProps) {
   const data = useQuery(api.orders.adminGet, orderId ? { orderId } : 'skip')
 
+  // Reviewing a dialog means reading a whole conversation and its files; the
+  // compact width that suits a price form makes that a chore. Every other
+  // status keeps the narrow dialog.
+  const reviewing = data?.order.status === 'under_review'
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent
+        className={cn('max-h-[92vh] overflow-y-auto', reviewing ? 'sm:max-w-3xl' : 'sm:max-w-lg')}
+      >
         {!data && (
           <>
             <DialogHeader>
@@ -75,6 +84,8 @@ function OrderActionContent({
   executorNickname: string | null
   onDone: () => void
 }) {
+  const now = useNow()
+  const reviewing = order.status === 'under_review'
   return (
     <>
       <DialogHeader>
@@ -85,8 +96,9 @@ function OrderActionContent({
           <span className="truncate">{category?.title ?? 'Без категории'}</span>
         </DialogTitle>
         <DialogDescription asChild>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <OrderStatusBadge status={order.status} />
+            <WaitingCell order={order} now={now} />
             <span className="text-muted-foreground text-xs">
               · создана {formatDateTime(order.createdAt)}
             </span>
@@ -95,15 +107,21 @@ function OrderActionContent({
       </DialogHeader>
 
       <div className="flex flex-col gap-3 text-sm">
-        <p className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-          Текст заявки
-        </p>
-        <p
-          className="bg-secondary/40 max-h-40 overflow-y-auto rounded-md border p-3
-            whitespace-pre-wrap"
-        >
-          {order.description}
-        </p>
+        {/* While reviewing, the question is the first bubble of the thread
+         *  below — repeating it here just pushes the conversation off-screen. */}
+        {!reviewing && (
+          <>
+            <p className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
+              Текст заявки
+            </p>
+            <p
+              className="bg-secondary/40 max-h-40 overflow-y-auto rounded-md border p-3
+                whitespace-pre-wrap"
+            >
+              {order.description}
+            </p>
+          </>
+        )}
         <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
           <span>
             Ориентировочно:{' '}
@@ -297,7 +315,13 @@ function ReviewAnswerForm({
 
   return (
     <div className="flex flex-col gap-3">
-      <ReviewConversation orderId={order._id} executorNickname={executorNickname} />
+      <ReviewConversation
+        orderId={order._id}
+        executorNickname={executorNickname}
+        description={order.description}
+        descriptionAttachmentIds={order.attachmentIds}
+        createdAt={order.createdAt}
+      />
       {showReject && (
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="review-note">Комментарий для эксперта (необязательно)</Label>
@@ -307,75 +331,23 @@ function ReviewAnswerForm({
             onChange={(e) => setNote(e.target.value)}
             placeholder="Что нужно доработать"
           />
+          <p className="text-muted-foreground text-xs">
+            Виден только эксперту — заказчик его не прочитает.
+          </p>
         </div>
       )}
       <DialogFooter>
         <Button variant="destructive" disabled={busy !== false} onClick={() => void submitReject()}>
-          {busy === 'reject' ? 'Возвращаем…' : 'На доработку'}
+          {busy === 'reject'
+            ? 'Возвращаем…'
+            : showReject
+              ? 'Отправить на доработку'
+              : 'На доработку'}
         </Button>
         <Button disabled={busy !== false} onClick={() => void submitApprove()}>
           {busy === 'approve' ? 'Закрываем…' : 'Одобрить и закрыть'}
         </Button>
       </DialogFooter>
-    </div>
-  )
-}
-
-/**
- * The full customer↔executor dialog the moderator verifies before closing.
- * The conversation is the deliverable now, so the admin reads the whole
- * thread here rather than a single answer artifact. Identities stay
- * anonymised — the executor is labelled with the same handle the customer
- * sees in their chat header, never the real name. Falls back to the generic
- * «Эксперт» for profiles that predate nicknames.
- */
-function ReviewConversation({
-  orderId,
-  executorNickname,
-}: {
-  orderId: Id<'orders'>
-  executorNickname: string | null
-}) {
-  const messages = useQuery(api.messages.list, { orderId })
-  const executorLabel = executorNickname ?? 'Эксперт'
-  return (
-    <div className="flex flex-col gap-1.5">
-      <p className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-        Переписка
-      </p>
-      <div
-        className="bg-secondary/40 flex max-h-64 flex-col gap-2 overflow-y-auto rounded-md border
-          p-3"
-      >
-        {messages === undefined && <p className="text-muted-foreground text-xs">Загрузка…</p>}
-        {messages?.length === 0 && (
-          <p className="text-muted-foreground text-xs">Сообщений пока нет</p>
-        )}
-        {messages?.map((m) =>
-          m.senderRole === 'system' ? (
-            <p key={m._id} className="text-muted-foreground text-center text-[11px] italic">
-              {m.body}
-            </p>
-          ) : (
-            <div key={m._id} className="text-sm">
-              <span
-                className={cn(
-                  'text-[11px] font-semibold',
-                  m.senderRole === 'executor' ? 'text-status-work' : 'text-status-search',
-                )}
-              >
-                {m.senderRole === 'executor' ? executorLabel : 'Заказчик'}
-              </span>
-              {m.body && <span className="ml-2 whitespace-pre-wrap">{m.body}</span>}
-              {m.attachmentIds.length > 0 && (
-                <span className="text-muted-foreground ml-2 text-xs">
-                  📎 {m.attachmentIds.length}
-                </span>
-              )}
-            </div>
-          ),
-        )}
-      </div>
     </div>
   )
 }

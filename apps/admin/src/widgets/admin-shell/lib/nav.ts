@@ -6,12 +6,12 @@ export interface NavItem {
   label: string
   icon: ComponentType<{ className?: string }>
   /** When set, the sidebar shows a badge with the live value (e.g. pending executors). */
-  badgeKey?: 'executorsPending'
+  badgeKey?: 'executorsPending' | 'ordersAttention'
 }
 
 export const NAV_ITEMS: readonly NavItem[] = [
   { href: '/', label: 'Обзор', icon: LayoutDashboard },
-  { href: '/orders', label: 'Заявки', icon: ClipboardList },
+  { href: '/orders', label: 'Заявки', icon: ClipboardList, badgeKey: 'ordersAttention' },
   { href: '/users', label: 'Пользователи', icon: Users },
   { href: '/executors', label: 'Исполнители', icon: UserSquare2, badgeKey: 'executorsPending' },
   { href: '/categories', label: 'Категории', icon: FolderTree },

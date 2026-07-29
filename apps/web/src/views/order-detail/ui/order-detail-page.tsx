@@ -332,9 +332,12 @@ function headerFor(
       const credLabel = creds ? `по ${creds}` : (EXECUTOR_STATE_LABEL[order.status] ?? 'В работе')
       const rated = executor && executor.ratingCount > 0
       return {
-        // Identity-hiding handle instead of the real name; generic fallback
-        // for profiles created before nicknames existed.
-        title: executor?.nickname ?? 'Эксперт',
+        // Deliberately generic. The псевдоним is internal cover between the
+        // admin and his experts — the client is not meant to learn that their
+        // заявка belongs to «Мудрый Барсук», only that an expert has it.
+        // `orders.get` already withholds the handle from customers; this is the
+        // matching label, not a fallback.
+        title: 'Эксперт',
         subtitle: rated ? (
           <span className="inline-flex items-center gap-1.5">
             <StarRating

@@ -15,6 +15,7 @@
   "prettier": "@tax-assistant/prettier-config",
   "dependencies": {
     "@convex-dev/better-auth": "^0.12.2",
+    "@sentry/nextjs": "^10.69.0",
     "@t3-oss/env-nextjs": "^0.13.8",
     "@tax-assistant/components": "workspace:*",
     "@tax-assistant/convex": "workspace:*",

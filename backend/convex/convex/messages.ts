@@ -2,7 +2,7 @@ import { ConvexError, v } from 'convex/values'
 
 import { canPostMessage } from '@tax-assistant/validators'
 
-import { mutation, query } from './_generated/server'
+import { internalMutation, mutation, query } from './_generated/server'
 import { loadParticipant } from './lib/orders'
 
 // The обезличенный диалог. Identities never cross the wire: the list returns
@@ -12,17 +12,25 @@ import { loadParticipant } from './lib/orders'
 export const list = query({
   args: { orderId: v.id('orders') },
   handler: async (ctx, { orderId }) => {
-    const { user } = await loadParticipant(ctx, orderId)
+    const { user, role } = await loadParticipant(ctx, orderId)
     const messages = await ctx.db
       .query('messages')
       .withIndex('by_order', (q) => q.eq('orderId', orderId))
       .order('asc')
       .collect()
-    return messages.map((m) => ({
+    // Staff-only lines (moderation verdicts, manual status overrides) are
+    // dropped for the заказчик here, at the read boundary — they must never
+    // reach the customer's client, even hidden. Everyone else (эксперт, админ)
+    // reads the full thread. `audience` is absent on rows written before the
+    // field existed; those are public timeline events.
+    const visible =
+      role === 'customer' ? messages.filter((m) => (m.audience ?? 'all') !== 'staff') : messages
+    return visible.map((m) => ({
       _id: m._id,
       senderRole: m.senderRole,
       body: m.body,
       attachmentIds: m.attachmentIds,
+      audience: m.audience ?? 'all',
       createdAt: m.createdAt,
       mine: m.senderId === user._id,
     }))
@@ -55,5 +63,40 @@ export const send = mutation({
       attachmentIds,
       createdAt: Date.now(),
     })
+  },
+})
+
+// ── Backfill ────────────────────────────────────────────────────────────────
+
+// System lines written before `audience` existed default to `'all'`, which
+// means the moderation notes that prompted this split are still sitting in
+// live customer threads. These prefixes are exactly the bodies `postSystem`
+// now writes with `'staff'` (see orders.rejectReview / submitForReview /
+// adminSetStatus), so matching on them retags the existing rows without
+// touching genuine timeline events.
+const STAFF_BODY_PREFIXES = [
+  'Диалог отправлен на доработку',
+  'Диалог отправлен на проверку модератору',
+  'Администратор изменил статус:',
+]
+
+/**
+ * One-off: retag historical staff messages so the customer stops seeing them.
+ * Idempotent — rows already carrying an explicit `audience` are left alone.
+ *
+ * Run once from the CLI: `npx convex run messages:backfillStaffAudience`.
+ */
+export const backfillStaffAudience = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query('messages').collect()
+    let updated = 0
+    for (const m of all) {
+      if (m.senderRole !== 'system' || m.audience !== undefined) continue
+      if (!STAFF_BODY_PREFIXES.some((p) => m.body.startsWith(p))) continue
+      await ctx.db.patch(m._id, { audience: 'staff' })
+      updated++
+    }
+    return { updated, scanned: all.length }
   },
 })

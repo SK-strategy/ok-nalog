@@ -81,7 +81,9 @@ export const markPaidByProvider = internalMutation({
     const now = Date.now()
     if (order.status === 'awaiting_payment') {
       await transition(ctx, order, 'paid', { paidAt: now })
-      await postSystem(ctx, order._id, 'Оплата получена')
+      // Same line as the manual `orders.markPaid` path — `paid` is what puts
+      // the order in front of executors, whichever route confirmed it.
+      await postSystem(ctx, order._id, 'Оплата получена. Заявка добавлена в очередь экспертов')
     }
     if (payment.status === 'pending') {
       await ctx.db.patch(payment._id, { status: 'succeeded', paidAt: now })

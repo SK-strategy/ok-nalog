@@ -31,6 +31,7 @@ export const upsert = mutation({
     clientType: v.optional(clientTypeArg),
     description: v.string(),
     attachmentIds: v.array(v.id('_storage')),
+    linkedOrderIds: v.optional(v.array(v.id('orders'))),
   },
   handler: async (ctx, input) => {
     const user = await requireUser(ctx)

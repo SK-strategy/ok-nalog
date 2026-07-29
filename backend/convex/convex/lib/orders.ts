@@ -26,16 +26,29 @@ export async function transition(
   await ctx.db.patch(order._id, { ...patch, status: to })
 }
 
+export type MessageAudience = 'all' | 'staff'
+
+/**
+ * Write a system line into the order thread.
+ *
+ * `audience` defaults to `'all'` — the timeline the заказчик reads. Pass
+ * `'staff'` for anything that is internal to the admin ↔ эксперт side
+ * (moderation verdicts, manual status overrides): it still lands in the same
+ * thread so the executor gets it in context, but `messages.list` withholds it
+ * from the customer.
+ */
 export async function postSystem(
   ctx: MutationCtx,
   orderId: Id<'orders'>,
   body: string,
+  audience: MessageAudience = 'all',
 ): Promise<void> {
   await ctx.db.insert('messages', {
     orderId,
     senderRole: 'system',
     body,
     attachmentIds: [],
+    audience,
     createdAt: Date.now(),
   })
 }

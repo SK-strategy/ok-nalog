@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from 'convex/react'
-import { Loader2, Paperclip, SendHorizontal, X } from 'lucide-react'
+import { Loader2, Lock, Paperclip, SendHorizontal, X } from 'lucide-react'
 
 import { canPostMessage, MAX_ATTACHMENTS } from '@tax-assistant/validators'
 
@@ -14,12 +14,21 @@ import { api } from '~/shared/api'
 import { cn } from '~/shared/lib'
 import { getFileExtension, useUpload, validateFile } from '~/shared/lib/use-upload'
 
+import { LinkedHistory } from './linked-history'
+
 type Order = Omit<Doc<'orders'>, 'customerId' | 'assignedExecutorId'>
 interface ChatMessage {
   _id: Id<'messages'>
   senderRole: 'customer' | 'executor' | 'system'
   body: string
   attachmentIds: Id<'_storage'>[]
+  /**
+   * `staff` lines are the admin ↔ эксперт back-channel (moderation verdicts,
+   * status overrides). The server withholds them from the заказчик entirely,
+   * so anything that arrives here tagged `staff` is addressed to *this* user —
+   * we badge it so the эксперт knows the client can't read it.
+   */
+  audience: 'all' | 'staff'
   createdAt: number
   mine: boolean
 }
@@ -143,6 +152,10 @@ export function OrderChat({
     // composer off-screen (which is what made the whole page scroll).
     <div className="flex min-h-0 flex-1 flex-col">
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+        {/* Attached past заявки sit above the question they were attached to —
+         *  the эксперт reads the history first, then the new ask. */}
+        <LinkedHistory orderId={order._id} hasLinks={(order.linkedOrderIds ?? []).length > 0} />
+
         <ChatBubble
           body={order.description}
           attachmentIds={order.attachmentIds}
@@ -157,7 +170,12 @@ export function OrderChat({
 
         {messages?.map((m) =>
           m.senderRole === 'system' ? (
-            <SystemEvent key={m._id} body={m.body} createdAt={m.createdAt} />
+            <SystemEvent
+              key={m._id}
+              body={m.body}
+              createdAt={m.createdAt}
+              staffOnly={m.audience === 'staff'}
+            />
           ) : (
             <ChatBubble
               key={m._id}
@@ -341,7 +359,36 @@ function FilePill({
 }
 
 // ─── system event ────────────────────────────────────────────────────────
-function SystemEvent({ body, createdAt }: { body: string; createdAt: number }) {
+function SystemEvent({
+  body,
+  createdAt,
+  staffOnly,
+}: {
+  body: string
+  createdAt: number
+  staffOnly: boolean
+}) {
+  // Staff lines carry real instructions ("доработайте вот это"), so they get a
+  // squared-off card that wraps instead of the truncating timeline pill, plus
+  // an explicit "клиент этого не видит" note — the эксперт needs to be sure
+  // where the line between the two audiences falls.
+  if (staffOnly) {
+    return (
+      <div className="my-3 flex justify-center">
+        <div
+          className="border-hint/30 bg-secondary/40 text-text-soft max-w-[92%] rounded-xl border
+            border-dashed px-3 py-2 text-[12px] leading-snug"
+        >
+          <div className="text-hint mb-1 flex items-center gap-1.5 text-[10.5px] font-semibold">
+            <Lock className="size-3" strokeWidth={2.2} />
+            <span>Только для эксперта · клиент не видит</span>
+            <span className="tabular-nums">{formatChatTimestamp(createdAt)}</span>
+          </div>
+          <div className="break-words whitespace-pre-wrap">{body}</div>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="my-3 flex justify-center">
       <div

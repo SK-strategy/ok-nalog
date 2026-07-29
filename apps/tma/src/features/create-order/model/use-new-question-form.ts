@@ -19,6 +19,16 @@ type Category = Doc<'categories'>
 const MIN_CHARS = 30
 const MAX_CHARS = 5000
 const DRAFT_DEBOUNCE_MS = 700
+/** Keep in sync with `MAX_LINKED_ORDERS` in backend/convex/convex/orders.ts. */
+const MAX_LINKED_ORDERS = 5
+
+/** A closed заявка offered as attachable history. */
+export interface LinkableOrder {
+  _id: Id<'orders'>
+  description: string
+  categoryTitle: string | null
+  createdAt: number
+}
 
 export interface NewQuestionFormController {
   /** Constants exposed for the view. */
@@ -50,6 +60,12 @@ export interface NewQuestionFormController {
   removeFile: (id: UploadedFile['id']) => void
   uploading: boolean
   uploadError: string | null
+
+  /** Past closed заявки the customer may attach as background. */
+  readonly linkableOrders: LinkableOrder[] | undefined
+  linkedOrderIds: Id<'orders'>[]
+  toggleLinkedOrder: (id: Id<'orders'>) => void
+  readonly maxLinkedOrders: number
 
   /** Submission. */
   canSubmit: boolean
@@ -90,6 +106,7 @@ export function useNewQuestionForm({
   const [description, setDescriptionState] = useState('')
   const [tagId, setTagIdState] = useState<Id<'tags'> | undefined>(undefined)
   const [files, setFiles] = useState<UploadedFile[]>([])
+  const [linkedOrderIds, setLinkedOrderIds] = useState<Id<'orders'>[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [localUploadError, setLocalUploadError] = useState<string | null>(null)
@@ -103,6 +120,18 @@ export function useNewQuestionForm({
     api.tags.listByCategoryAndType,
     categoryId ? { categoryId, clientType } : 'skip',
   )
+
+  const linkableOrders = useQuery(api.orders.myClosedOrders, {}) as LinkableOrder[] | undefined
+
+  // Silently drops a selection at the cap rather than erroring — the UI
+  // disables unpicked rows once the limit is reached, so this is only a guard.
+  const toggleLinkedOrder = useCallback((id: Id<'orders'>) => {
+    setLinkedOrderIds((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id)
+      if (prev.length >= MAX_LINKED_ORDERS) return prev
+      return [...prev, id]
+    })
+  }, [])
 
   // Cap input length at MAX_CHARS at the setter level so view callers don't
   // have to remember the constant.
@@ -151,6 +180,7 @@ export function useNewQuestionForm({
     setDescriptionState(draft.description)
     if (draft.categoryId) setCategoryIdState(draft.categoryId)
     if (draft.tagId) setTagIdState(draft.tagId)
+    if (draft.linkedOrderIds?.length) setLinkedOrderIds(draft.linkedOrderIds)
     if (draft.attachmentIds.length > 0) {
       void hydrateFiles(draft.attachmentIds).then(setFiles)
     }
@@ -196,7 +226,8 @@ export function useNewQuestionForm({
         description.length === 0 &&
         tagId === undefined &&
         attachmentIds.length === 0 &&
-        categoryId === undefined
+        categoryId === undefined &&
+        linkedOrderIds.length === 0
       )
         return
       void upsertDraft({
@@ -205,9 +236,19 @@ export function useNewQuestionForm({
         clientType,
         description,
         attachmentIds,
+        linkedOrderIds,
       })
     },
-    [description, tagId, attachmentIds, categoryId, clientType, submitting, upsertDraft],
+    [
+      description,
+      tagId,
+      attachmentIds,
+      categoryId,
+      clientType,
+      linkedOrderIds,
+      submitting,
+      upsertDraft,
+    ],
     DRAFT_DEBOUNCE_MS,
   )
 
@@ -227,6 +268,7 @@ export function useNewQuestionForm({
         attachmentIds,
         tagId,
         clientType,
+        linkedOrderIds,
       })
       // Server-side `orders.create` already clears the draft; the redundant
       // call here keeps the UI in sync immediately on slow networks.
@@ -236,7 +278,18 @@ export function useNewQuestionForm({
       setError('Не удалось отправить обращение. Попробуйте ещё раз.')
       setSubmitting(false)
     }
-  }, [canSubmit, create, categoryId, trimmed, attachmentIds, tagId, clientType, clearDraft, router])
+  }, [
+    canSubmit,
+    create,
+    categoryId,
+    trimmed,
+    attachmentIds,
+    tagId,
+    clientType,
+    linkedOrderIds,
+    clearDraft,
+    router,
+  ])
 
   return {
     minChars: MIN_CHARS,
@@ -257,6 +310,10 @@ export function useNewQuestionForm({
     removeFile,
     uploading,
     uploadError: localUploadError ?? uploadErr,
+    linkableOrders,
+    linkedOrderIds,
+    toggleLinkedOrder,
+    maxLinkedOrders: MAX_LINKED_ORDERS,
     canSubmit,
     submitting,
     submit,

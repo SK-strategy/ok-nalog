@@ -119,6 +119,9 @@ export default defineSchema({
     clientType: v.optional(clientType),
     description: v.string(),
     attachmentIds: v.array(v.id('_storage')),
+    // Mirrors `orders.linkedOrderIds` so a half-composed вопрос keeps its
+    // attached history across a TMA restart like everything else in the form.
+    linkedOrderIds: v.optional(v.array(v.id('orders'))),
     updatedAt: v.number(),
   }).index('by_user', ['userId']),
 
@@ -180,6 +183,13 @@ export default defineSchema({
     clientType: v.optional(clientType),
     description: v.string(),
     attachmentIds: v.array(v.id('_storage')),
+    // Closed заявки the customer attached as background when opening this one
+    // ("вот моё прошлое обращение по этой же теме"). The expert assigned here
+    // can read those threads read-only via `orders.linkedHistory`, so they
+    // don't have to ask the client to re-explain history the platform already
+    // has. Always the customer's own, always already-terminal orders — both
+    // enforced in `orders.create`.
+    linkedOrderIds: v.optional(v.array(v.id('orders'))),
     status: v.union(
       v.literal('submitted'),
       v.literal('rejected'),
@@ -233,6 +243,13 @@ export default defineSchema({
     senderId: v.optional(v.id('users')), // absent for system messages
     body: v.string(),
     attachmentIds: v.array(v.id('_storage')),
+    // Who may read this line. `all` (or absent, for rows predating the field)
+    // is the whole thread; `staff` is the internal back-channel — moderation
+    // notes and admin audit entries that are written INTO the order thread so
+    // the executor sees them in context, but which the заказчик must never
+    // read. Enforced at the read boundary in `messages.list`, not in the UI:
+    // the customer's client never receives a staff line at all.
+    audience: v.optional(v.union(v.literal('all'), v.literal('staff'))),
     createdAt: v.number(),
   }).index('by_order', ['orderId', 'createdAt']),
 

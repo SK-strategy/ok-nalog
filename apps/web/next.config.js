@@ -1,5 +1,6 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { withSentryConfig } from '@sentry/nextjs'
 import { createJiti } from 'jiti'
 
 const jiti = createJiti(import.meta.url)
@@ -31,4 +32,25 @@ const config = {
   typescript: { ignoreBuildErrors: true },
 }
 
-export default config
+/**
+ * Sentry wraps the build to upload source maps and instrument the server.
+ *
+ * Everything here degrades to a plain Next build when Sentry isn't configured:
+ * without SENTRY_AUTH_TOKEN there's no upload step, and without a DSN the
+ * runtime SDK never initialises (see src/instrumentation.ts).
+ */
+export default withSentryConfig(config, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  // Source maps are uploaded then deleted from the output, so the standalone
+  // image doesn't ship readable sources.
+  sourcemaps: { deleteSourcemapsAfterUpload: true },
+
+  // Don't let a Sentry outage or a missing token fail a deploy.
+  silent: true,
+  errorHandler: (err) => {
+    console.warn('[sentry] build-time upload skipped:', err.message)
+  },
+})

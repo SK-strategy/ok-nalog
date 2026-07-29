@@ -12,6 +12,7 @@ import { cn } from '~/shared/lib'
 
 import type { NewQuestionFormController } from '../model/use-new-question-form'
 import { AttachmentList } from './attachment-list'
+import { LinkedOrdersPicker } from './linked-orders-picker'
 import { TagPicker } from './tag-picker'
 
 type Category = Doc<'categories'>
@@ -103,6 +104,13 @@ export function NewQuestionForm({
           uploadError={form.uploadError}
         />
       </Field>
+
+      <LinkedOrdersPicker
+        orders={form.linkableOrders}
+        selected={form.linkedOrderIds}
+        onToggle={form.toggleLinkedOrder}
+        max={form.maxLinkedOrders}
+      />
 
       <div className="text-hint flex items-start gap-2.5 pt-2">
         <ShieldCheck className="size-4 shrink-0 translate-y-px" />

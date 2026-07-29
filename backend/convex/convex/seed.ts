@@ -55,8 +55,11 @@ export const run = mutation({
     let tagsCreated = 0
     let tagsUpdated = 0
     let tagsSkipped = 0
-    for (let i = 0; i < TAGS_SEED.length; i++) {
-      const tag = TAGS_SEED[i]!
+    // `entries()` rather than an index loop: with `noUncheckedIndexedAccess`,
+    // `TAGS_SEED[i]` is `T | undefined` and needs a non-null assertion the lint
+    // config forbids. Destructuring the iterator gives a properly typed element
+    // and still yields the index used for `sortOrder`.
+    for (const [i, tag] of TAGS_SEED.entries()) {
       const categoryId = categoryByCode.get(tag.categoryCode)
       if (!categoryId) {
         tagsSkipped++

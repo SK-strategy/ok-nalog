@@ -1,15 +1,14 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { useQuery } from 'convex/react'
 import { LogOut } from 'lucide-react'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@tax-assistant/ui/avatar'
 
 import { useSession } from '~/entities/session'
-import { api } from '~/shared/api'
 
 import { isNavActive, NAV_ITEMS } from '../lib/nav'
+import { useNavBadges } from '../lib/use-nav-badges'
 import { SidebarLink } from './sidebar-link'
 
 /**
@@ -20,9 +19,7 @@ import { SidebarLink } from './sidebar-link'
 export function Sidebar() {
   const pathname = usePathname()
   const { me, signOut } = useSession()
-  const pendingExecutors = useQuery(api.executors.pendingCount, {})
-  const pendingChanges = useQuery(api.executors.pendingChangesCount, {})
-  const executorsBadge = (pendingExecutors ?? 0) + (pendingChanges ?? 0)
+  const badgeFor = useNavBadges()
 
   return (
     <aside
@@ -48,16 +45,20 @@ export function Sidebar() {
         >
           Управление
         </p>
-        {NAV_ITEMS.map((item) => (
-          <SidebarLink
-            key={item.href}
-            href={item.href}
-            label={item.label}
-            icon={item.icon}
-            active={isNavActive(item.href, pathname)}
-            badge={item.badgeKey === 'executorsPending' ? executorsBadge : undefined}
-          />
-        ))}
+        {NAV_ITEMS.map((item) => {
+          const badge = badgeFor(item)
+          return (
+            <SidebarLink
+              key={item.href}
+              href={item.href}
+              label={item.label}
+              icon={item.icon}
+              active={isNavActive(item.href, pathname)}
+              badge={badge?.count}
+              badgeReason={badge?.reason}
+            />
+          )
+        })}
       </nav>
 
       {me && (

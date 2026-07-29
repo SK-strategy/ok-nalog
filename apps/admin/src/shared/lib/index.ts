@@ -1,6 +1,7 @@
 export { cn } from '@tax-assistant/ui'
 export { AuthClientContext, createAuthClientFor, useAuthClient } from './auth-client'
 export type { AuthClient } from './auth-client'
-export { formatDate, formatDateTime, shortId } from './format'
+export { formatDate, formatDateTime, formatDuration, shortId } from './format'
+export { useNow } from './use-now'
 export { useSort } from './use-sort'
 export type { SortDir } from './use-sort'

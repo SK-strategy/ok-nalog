@@ -24,3 +24,22 @@ export function formatDateTime(ms: number): string {
 export function shortId(id: string): string {
   return id.slice(-4).toUpperCase()
 }
+
+/**
+ * Compact elapsed-time label: "12 мин", "3 ч 40 мин", "2 дн 4 ч".
+ *
+ * Coarsens as the span grows — once something has been waiting for days, the
+ * minutes are noise. Sub-minute spans read as "только что" rather than "0 мин",
+ * which would look like a bug on a freshly created заявка.
+ */
+export function formatDuration(ms: number): string {
+  if (ms < 60_000) return 'только что'
+  const totalMinutes = Math.floor(ms / 60_000)
+  const minutes = totalMinutes % 60
+  const totalHours = Math.floor(totalMinutes / 60)
+  const hours = totalHours % 24
+  const days = Math.floor(totalHours / 24)
+  if (days > 0) return hours > 0 ? `${days} дн ${hours} ч` : `${days} дн`
+  if (totalHours > 0) return minutes > 0 ? `${totalHours} ч ${minutes} мин` : `${totalHours} ч`
+  return `${totalMinutes} мин`
+}
