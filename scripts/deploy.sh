@@ -86,8 +86,13 @@ if [ "$skip_images" -eq 0 ]; then
   build_args=()
   if [ -f .env.prod ]; then
     for var in NEXT_PUBLIC_SENTRY_DSN SENTRY_ORG SENTRY_PROJECT SENTRY_AUTH_TOKEN; do
-      value="$(grep -E "^$var=" .env.prod | head -1 | sed -E 's/^[^=]+=//; s/^"(.*)"$/\1/')"
-      [ -n "$value" ] && build_args+=(--build-arg "$var=$value")
+      # `|| true` is load-bearing: an absent var makes grep exit 1, and under
+      # `set -euo pipefail` that aborts the whole deploy before a single line of
+      # output — which is exactly how this failed the first time. SENTRY_AUTH_TOKEN
+      # is routinely unset (source-map upload is optional), so this must be a
+      # non-event.
+      value="$(grep -E "^$var=" .env.prod | head -1 | sed -E 's/^[^=]+=//; s/^"(.*)"$/\1/' || true)"
+      if [ -n "$value" ]; then build_args+=(--build-arg "$var=$value"); fi
     done
   fi
   if [ ${#build_args[@]} -eq 0 ]; then
