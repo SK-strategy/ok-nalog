@@ -22,6 +22,7 @@ import type * as lib_ledger from "../lib/ledger.js";
 import type * as lib_notifications from "../lib/notifications.js";
 import type * as lib_orders from "../lib/orders.js";
 import type * as lib_payments from "../lib/payments.js";
+import type * as lib_sentry from "../lib/sentry.js";
 import type * as merge from "../merge.js";
 import type * as messages from "../messages.js";
 import type * as notifications from "../notifications.js";
@@ -30,6 +31,7 @@ import type * as payments from "../payments.js";
 import type * as seed from "../seed.js";
 import type * as seedData from "../seedData.js";
 import type * as tags from "../tags.js";
+import type * as telemetry from "../telemetry.js";
 import type * as users from "../users.js";
 
 import type {
@@ -53,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   "lib/notifications": typeof lib_notifications;
   "lib/orders": typeof lib_orders;
   "lib/payments": typeof lib_payments;
+  "lib/sentry": typeof lib_sentry;
   merge: typeof merge;
   messages: typeof messages;
   notifications: typeof notifications;
@@ -61,6 +64,7 @@ declare const fullApi: ApiFromModules<{
   seed: typeof seed;
   seedData: typeof seedData;
   tags: typeof tags;
+  telemetry: typeof telemetry;
   users: typeof users;
 }>;
 

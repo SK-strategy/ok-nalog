@@ -1,5 +1,6 @@
 import { createBot } from './bot.ts'
 import { env } from './env.ts'
+import { captureFatal, initSentry } from './sentry.ts'
 import { startWorker } from './worker.ts'
 
 // Entrypoint. One process runs two concurrent jobs against the same bot token:
@@ -11,6 +12,10 @@ import { startWorker } from './worker.ts'
 // 409 Conflict. For the same reason: do not scale this service past one replica.
 
 async function main(): Promise<void> {
+  // Before anything that can throw — a bad token or unreachable Convex should
+  // arrive as a Sentry event, not just a line in a container log nobody tails.
+  initSentry()
+
   const bot = createBot()
   const shutdown = new AbortController()
 
@@ -41,7 +46,9 @@ async function main(): Promise<void> {
   console.log('[bot] stopped')
 }
 
-main().catch((error: unknown) => {
+main().catch(async (error: unknown) => {
   console.error('[bot] fatal:', error)
+  // Flush before exiting, or the event dies with the process.
+  await captureFatal(error)
   process.exit(1)
 })

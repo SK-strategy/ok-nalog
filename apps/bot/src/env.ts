@@ -33,6 +33,17 @@ const schema = z.object({
    * imperceptible.
    */
   BOT_POLL_INTERVAL_MS: z.coerce.number().int().min(500).default(3000),
+
+  /**
+   * Sentry ingest DSN. Optional on purpose — unset means the SDK never
+   * initialises and every capture is a no-op, so dev and any un-wired
+   * environment run clean. An empty string is normalised to undefined because
+   * that's how an unset variable arrives from a `.env` file.
+   */
+  SENTRY_DSN: z
+    .url()
+    .optional()
+    .or(z.literal('').transform(() => undefined)),
 })
 
 const parsed = schema.safeParse(process.env)

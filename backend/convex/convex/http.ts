@@ -1,12 +1,31 @@
 import { httpRouter } from 'convex/server'
 
 import type { Id } from './_generated/dataModel'
+import type { ActionCtx } from './_generated/server'
 import { internal } from './_generated/api'
 import { httpAction } from './_generated/server'
 import { authComponent, createAuth } from './auth'
 import { activeProvider, verifyWebhookSignature } from './lib/payments'
+import { reportActionError } from './telemetry'
 
 const http = httpRouter()
+
+/**
+ * `httpAction`, plus Sentry reporting for anything that escapes the handler.
+ *
+ * Worth doing here specifically: an unhandled throw in an HTTP action becomes a
+ * bare 500 to a caller that is usually a machine — a payment provider or the
+ * notification worker — so nobody sees a stack trace and the failure is
+ * invisible until someone notices payments or notifications have stopped.
+ *
+ * Safe to report inline because HTTP actions aren't transactional; the `await`
+ * completes before the error propagates. Mutations can't do this — see the note
+ * at the top of `telemetry.ts`.
+ */
+const reportingHttpAction = (
+  name: string,
+  handler: (ctx: ActionCtx, request: Request) => Promise<Response>,
+) => httpAction(async (ctx, request) => reportActionError(name, () => handler(ctx, request)))
 
 // Mounts /api/auth/* — sign-in/callback/session/etc. — on the Convex
 // HTTP actions origin (CONVEX_SITE_ORIGIN, port 3311 locally).
@@ -21,7 +40,7 @@ authComponent.registerRoutesLazy(http, createAuth, { cors: true })
 http.route({
   path: '/payments/webhook',
   method: 'POST',
-  handler: httpAction(async (ctx, request) => {
+  handler: reportingHttpAction('http:payments/webhook', async (ctx, request) => {
     const raw = await request.text()
     const signature = request.headers.get('x-signature')
     const ok = await verifyWebhookSignature(raw, signature, process.env.PAYMENTS_WEBHOOK_SECRET)
@@ -58,7 +77,7 @@ http.route({
 http.route({
   path: '/payments/mock-pay',
   method: 'GET',
-  handler: httpAction(async (ctx, request) => {
+  handler: reportingHttpAction('http:payments/mock-pay', async (ctx, request) => {
     if (activeProvider() !== 'mock') return new Response('disabled', { status: 404 })
     const pid = new URL(request.url).searchParams.get('pid')
     if (!pid) return new Response('missing pid', { status: 400 })
@@ -118,7 +137,7 @@ const json = (body: unknown, status = 200): Response =>
 http.route({
   path: '/bot/pending',
   method: 'POST',
-  handler: httpAction(async (ctx, request) => {
+  handler: reportingHttpAction('http:bot/pending', async (ctx, request) => {
     if (!bearerOk(request)) return json({ error: 'unauthorized' }, 401)
     let limit: number | undefined
     try {
@@ -135,7 +154,7 @@ http.route({
 http.route({
   path: '/bot/ack',
   method: 'POST',
-  handler: httpAction(async (ctx, request) => {
+  handler: reportingHttpAction('http:bot/ack', async (ctx, request) => {
     if (!bearerOk(request)) return json({ error: 'unauthorized' }, 401)
     let results: BotAckResult[]
     try {
@@ -154,7 +173,7 @@ http.route({
 http.route({
   path: '/bot/chat',
   method: 'POST',
-  handler: httpAction(async (ctx, request) => {
+  handler: reportingHttpAction('http:bot/chat', async (ctx, request) => {
     if (!bearerOk(request)) return json({ error: 'unauthorized' }, 401)
     let telegramId: string
     let action: string

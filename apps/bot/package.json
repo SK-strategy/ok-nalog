@@ -14,6 +14,7 @@
   },
   "prettier": "@tax-assistant/prettier-config",
   "dependencies": {
+    "@sentry/node": "^10.69.0",
     "grammy": "^1.30.0",
     "zod": "catalog:"
   },

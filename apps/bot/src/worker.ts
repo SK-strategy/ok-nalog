@@ -5,6 +5,7 @@ import type { DeliverableNotification, DeliveryResult } from './convex.ts'
 import { fetchPending, reportResults } from './convex.ts'
 import { env } from './env.ts'
 import { renderNotification } from './format.ts'
+import { captureError } from './sentry.ts'
 
 // Delivery half of the notification outbox. Convex decides what to say; this
 // decides when it actually reaches Telegram, and how to react when it doesn't.
@@ -19,6 +20,9 @@ import { renderNotification } from './format.ts'
  * rather than shrinking the delay.
  */
 const SEND_GAP_MS = 120
+
+/** Consecutive failed polls before the outage is worth a Sentry event. */
+const REPORT_AFTER_FAILURES = 3
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -139,6 +143,14 @@ export function startWorker(bot: Bot, signal: AbortSignal): Promise<void> {
       } catch (error) {
         failures++
         console.error(`[worker] poll failed (${failures}):`, error)
+        // Report the streak, not every tick. A single failure is usually a
+        // Convex restart mid-deploy and self-heals within a poll or two; at a
+        // 3s cadence, reporting each one would send hundreds of identical
+        // events through any real outage. Three in a row means it isn't a blip
+        // — that's the threshold the /bot/* routing bug would have tripped.
+        if (failures === REPORT_AFTER_FAILURES) {
+          captureError(error, 'worker.poll', { consecutiveFailures: failures })
+        }
         // Back off when Convex is unreachable so we don't spin a hot loop
         // against a down backend. Caps at ~30s.
         await sleep(Math.min(env.BOT_POLL_INTERVAL_MS * 2 ** failures, 30_000))

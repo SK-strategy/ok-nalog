@@ -1,11 +1,12 @@
 import { ConvexError, v } from 'convex/values'
 
 import type { Doc, Id } from './_generated/dataModel'
-import type { MutationCtx } from './_generated/server'
+import type { ActionCtx, MutationCtx } from './_generated/server'
 import { components, internal } from './_generated/api'
 import { action, internalMutation, internalQuery, mutation } from './_generated/server'
 import { getUser, requireAdmin } from './lib/auth'
 import { sendEmail } from './lib/email'
+import { reportingHandler } from './telemetry'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Account merge: collapse a duplicate (auth user + domain user) pair D into a
@@ -569,56 +570,66 @@ export const consumeMergeOtp = internalMutation({
  */
 export const requestEmailMerge = action({
   args: { email: v.string() },
-  handler: async (ctx, { email }): Promise<{ ok: true }> => {
-    const normEmail = email.trim().toLowerCase()
-    const S = await ctx.runQuery(internal.merge.sessionDomainUser, {})
-    if (!S) throw new ConvexError({ code: 'UNAUTHENTICATED', message: 'Требуется вход' })
-    const D = await ctx.runQuery(internal.merge.findUserByEmail, { email: normEmail })
-    // Nothing to merge, same account, or would touch an admin → silently no-op.
-    if (!D || D._id === S._id || (D.role === 'admin' && S.role !== 'admin')) return { ok: true }
-    // Math.random is allowed in Convex actions (not mutations) and is fine for
-    // a single-use, short-TTL, attempt-limited code (not a long-term secret).
-    const code = String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0')
-    // storeMergeOtp throws on the resend cooldown or the cumulative-attempt
-    // lockout. Swallow those and send nothing — this both bounds the email-bomb
-    // (≤1 send per cooldown per session) and keeps the response uniform
-    // (anti-enumeration: always {ok:true}, regardless of target/limit state).
-    try {
-      await ctx.runMutation(internal.merge.storeMergeOtp, {
-        survivorAuthUserId: S.authUserId,
-        duplicateUserId: D._id,
-        email: normEmail,
-        code,
+  // Params are annotated because the wrapper interrupts Convex's inference from
+  // `args`. They aren't free-floating: assigning the wrapped handler back into
+  // `action({ args })` still type-checks them against the validators above, so
+  // changing `v.string()` here breaks the build rather than drifting silently.
+  handler: reportingHandler(
+    'merge:requestEmailMerge',
+    async (ctx: ActionCtx, { email }: { email: string }): Promise<{ ok: true }> => {
+      const normEmail = email.trim().toLowerCase()
+      const S = await ctx.runQuery(internal.merge.sessionDomainUser, {})
+      if (!S) throw new ConvexError({ code: 'UNAUTHENTICATED', message: 'Требуется вход' })
+      const D = await ctx.runQuery(internal.merge.findUserByEmail, { email: normEmail })
+      // Nothing to merge, same account, or would touch an admin → silently no-op.
+      if (!D || D._id === S._id || (D.role === 'admin' && S.role !== 'admin')) return { ok: true }
+      // Math.random is allowed in Convex actions (not mutations) and is fine for
+      // a single-use, short-TTL, attempt-limited code (not a long-term secret).
+      const code = String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0')
+      // storeMergeOtp throws on the resend cooldown or the cumulative-attempt
+      // lockout. Swallow those and send nothing — this both bounds the email-bomb
+      // (≤1 send per cooldown per session) and keeps the response uniform
+      // (anti-enumeration: always {ok:true}, regardless of target/limit state).
+      try {
+        await ctx.runMutation(internal.merge.storeMergeOtp, {
+          survivorAuthUserId: S.authUserId,
+          duplicateUserId: D._id,
+          email: normEmail,
+          code,
+        })
+      } catch {
+        return { ok: true }
+      }
+      await sendEmail({
+        to: normEmail,
+        subject: 'Объединение аккаунтов — Налоговый помощник',
+        text: `Ваш код для объединения аккаунтов: ${code}\n\nВы запросили привязку этой почты к аккаунту Telegram. Введите код в приложении. Код действует 10 минут. Если вы не запрашивали объединение — проигнорируйте письмо.`,
       })
-    } catch {
       return { ok: true }
-    }
-    await sendEmail({
-      to: normEmail,
-      subject: 'Объединение аккаунтов — Налоговый помощник',
-      text: `Ваш код для объединения аккаунтов: ${code}\n\nВы запросили привязку этой почты к аккаунту Telegram. Введите код в приложении. Код действует 10 минут. Если вы не запрашивали объединение — проигнорируйте письмо.`,
-    })
-    return { ok: true }
-  },
+    },
+  ),
 })
 
 export const confirmEmailMerge = action({
   args: { otp: v.string() },
-  handler: async (
-    ctx,
-    { otp },
-  ): Promise<{ status: 'merged' | 'already-merged'; survivorUserId: Id<'users'> }> => {
-    const S = await ctx.runQuery(internal.merge.sessionDomainUser, {})
-    if (!S) throw new ConvexError({ code: 'UNAUTHENTICATED', message: 'Требуется вход' })
-    const { duplicateUserId } = await ctx.runMutation(internal.merge.consumeMergeOtp, {
-      survivorAuthUserId: S.authUserId,
-      otp,
-    })
-    return await ctx.runMutation(internal.merge.mergeUsers, {
-      survivorUserId: S._id,
-      duplicateUserId,
-    })
-  },
+  handler: reportingHandler(
+    'merge:confirmEmailMerge',
+    async (
+      ctx: ActionCtx,
+      { otp }: { otp: string },
+    ): Promise<{ status: 'merged' | 'already-merged'; survivorUserId: Id<'users'> }> => {
+      const S = await ctx.runQuery(internal.merge.sessionDomainUser, {})
+      if (!S) throw new ConvexError({ code: 'UNAUTHENTICATED', message: 'Требуется вход' })
+      const { duplicateUserId } = await ctx.runMutation(internal.merge.consumeMergeOtp, {
+        survivorAuthUserId: S.authUserId,
+        otp,
+      })
+      return await ctx.runMutation(internal.merge.mergeUsers, {
+        survivorUserId: S._id,
+        duplicateUserId,
+      })
+    },
+  ),
 })
 
 /** Admin escape hatch — the only path past the money-safety gate (`force`). */

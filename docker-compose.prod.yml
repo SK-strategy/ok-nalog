@@ -153,6 +153,10 @@ services:
       # this is the container copy (layer A). See DEPLOY.md.
       BOT_SERVICE_SECRET: ${BOT_SERVICE_SECRET}
       WEB_ORIGIN: ${WEB_ORIGIN}
+      # Optional. Unset (the default via :-) → the SDK never initialises, so
+      # the worker behaves exactly as it did before Sentry was wired in.
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      NODE_ENV: production
     depends_on:
       - convex-backend
 

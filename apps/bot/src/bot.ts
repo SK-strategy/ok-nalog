@@ -2,6 +2,7 @@ import { Bot } from 'grammy'
 
 import { muteChat, registerChat } from './convex.ts'
 import { env } from './env.ts'
+import { captureError } from './sentry.ts'
 
 // The conversational surface. Intentionally tiny: this bot notifies, it does
 // not host the product — the Mini App does. Every command here exists to make
@@ -68,6 +69,7 @@ export function createBot(): Bot {
   // /start for everyone. Log and carry on instead.
   bot.catch((err) => {
     console.error('[bot] update handler failed:', err.error)
+    captureError(err.error, 'bot.update', { update: err.ctx.update.update_id })
   })
 
   return bot
