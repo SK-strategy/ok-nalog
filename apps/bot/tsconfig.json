@@ -1,0 +1,27 @@
+{
+  "extends": "@tax-assistant/tsconfig/base.json",
+  "compilerOptions": {
+    /**
+     * This app is *run* by Node, not bundled, so it overrides the workspace
+     * default of `module: Preserve` + `moduleResolution: Bundler` (which emits
+     * nothing) with real Node ESM output.
+     *
+     * Relative imports are written with a `.ts` extension and rewritten to
+     * `.js` on emit. That's what lets the same source both compile for prod
+     * (`tsc` → dist) and run straight from source in dev under Node's type
+     * stripping — Node does not rewrite specifiers, so a `./env.js` import
+     * would fail to resolve against `env.ts` on disk.
+     */
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": false,
+    "outDir": "dist",
+    "rootDir": "src",
+    "sourceMap": true,
+    "types": ["node"]
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}

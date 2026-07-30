@@ -11,8 +11,9 @@
 #   4. pull + restart the app containers on the VPS, then smoke-check
 #
 # Usage:
-#   scripts/deploy.sh                  # everything, all three apps
+#   scripts/deploy.sh                  # everything, all four apps
 #   scripts/deploy.sh web admin        # only these app images
+#   scripts/deploy.sh bot              # just the notification bot
 #   scripts/deploy.sh --skip-images    # convex functions + restart only
 #   scripts/deploy.sh --skip-convex    # images + restart only
 #   scripts/deploy.sh --skip-restart   # build + push only
@@ -40,14 +41,14 @@ for arg in "$@"; do
     --skip-convex) skip_convex=1 ;;
     --skip-restart) skip_restart=1 ;;
     --direct) direct=1 ;;
-    web | admin | tma) apps+=("$arg") ;;
+    web | admin | tma | bot) apps+=("$arg") ;;
     *)
       echo "unknown argument: $arg" >&2
       exit 1
       ;;
   esac
 done
-[ ${#apps[@]} -eq 0 ] && apps=(web admin tma)
+[ ${#apps[@]} -eq 0 ] && apps=(web admin tma bot)
 
 sha="$(git rev-parse --short HEAD)"
 if [ -n "$(git status --porcelain)" ]; then
@@ -158,6 +159,17 @@ if [ "$skip_restart" -eq 0 ]; then
   done
   # Self-hosted Convex answers /version with the literal string "unknown" — that's healthy.
   printf '%-28s %s\n' "api /version" "$(curl -sS --max-time 15 https://api.oknalog.net/version || echo FAIL)"
+
+  # The bot serves no HTTP, so curl can't see it. A crashlooping bot still
+  # "exists" in compose ps, so check that it authenticated with Telegram —
+  # that line only prints after getMe() succeeds.
+  if printf '%s\n' "${apps[@]}" | grep -qx bot; then
+    printf '%-28s %s\n' "bot" \
+      "$(ssh "$DEPLOY_HOST" "cd $DEPLOY_DIR && $COMPOSE logs --tail=40 bot 2>/dev/null \
+        | grep -c 'authenticated as'" 2>/dev/null | tr -d '\r' | grep -qx 0 \
+        && echo 'NOT AUTHENTICATED — check: docker compose logs bot' \
+        || echo 'authenticated')"
+  fi
 fi
 
 echo "✓ deploy finished ($sha)"

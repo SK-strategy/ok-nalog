@@ -238,6 +238,12 @@ pnpm with-prod-env npx convex env set TELEGRAM_OIDC_CLIENT_SECRET <from BotFathe
 pnpm with-prod-env npx convex env set RESEND_API_KEY <from resend.com>
 pnpm with-prod-env npx convex env set RESEND_FROM "Налоговый помощник <auth@oknalog.net>"
 
+# Notification bot (apps/bot). Authenticates the worker against the /bot/*
+# HTTP actions. The SAME value must also be in /opt/tax-assistant/.env on the
+# VPS (layer A) or the two won't agree. Missing here = the routes fail shut and
+# nothing is ever delivered.
+pnpm with-prod-env npx convex env set BOT_SERVICE_SECRET "$(openssl rand -hex 32)"
+
 # Now that BETTER_AUTH_SECRET is set, generate the REAL JWKS (deferred from
 # Step 5). Use `pnpm exec` on the generate side, NOT `pnpm with-prod-env`:
 # `pnpm run`'s "> @tax-assistant/convex@ …" banner prints to STDOUT and would
@@ -268,8 +274,8 @@ Back on the VPS:
 
 ```bash
 cd /opt/tax-assistant
-docker compose -f docker-compose.prod.yml pull web admin tma
-docker compose -f docker-compose.prod.yml up -d web admin tma
+docker compose -f docker-compose.prod.yml pull web admin tma bot
+docker compose -f docker-compose.prod.yml up -d web admin tma bot
 
 # Smoke test
 curl -sS -o /dev/null -w '%{http_code}\n' https://oknalog.net
@@ -281,6 +287,17 @@ curl -sS https://api.oknalog.net/.well-known/openid-configuration  # Site path
 
 All four should return 200. The `.well-known` curl should return a JSON OIDC discovery document —
 that confirms Caddy's path-routing is sending site paths to :3211 and not :3210.
+
+The `bot` service has no HTTP surface (it's outbound-only), so curl can't see it. Check its log
+instead — the line only prints after it authenticates with Telegram:
+
+```bash
+docker compose -f docker-compose.prod.yml logs bot | grep 'authenticated as'
+```
+
+> **Never run more than one `bot` replica.** Telegram allows a single long-polling consumer per
+> token; a second one makes both flap with `409 Conflict` and updates get split between them. The
+> same applies to running `pnpm -F @tax-assistant/bot dev` on your laptop while prod is up.
 
 ---
 

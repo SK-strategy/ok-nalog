@@ -3,6 +3,7 @@ import { ConvexError, v } from 'convex/values'
 import { canPostMessage } from '@tax-assistant/validators'
 
 import { internalMutation, mutation, query } from './_generated/server'
+import { buildPreview, counterpartyOf, enqueueNotification } from './lib/notifications'
 import { loadParticipant } from './lib/orders'
 
 // The обезличенный диалог. Identities never cross the wire: the list returns
@@ -55,7 +56,7 @@ export const send = mutation({
     if (!canPostMessage(role, order.status)) {
       throw new ConvexError({ code: 'CHAT_CLOSED', message: 'Диалог по заявке закрыт' })
     }
-    return ctx.db.insert('messages', {
+    const messageId = await ctx.db.insert('messages', {
       orderId,
       senderRole: role, // 'customer' | 'executor'
       senderId: user._id,
@@ -63,6 +64,26 @@ export const send = mutation({
       attachmentIds,
       createdAt: Date.now(),
     })
+
+    // Ping the other side over Telegram. Enqueue-only — `enqueueNotification`
+    // never throws and never calls out to the network, so a notification
+    // problem can't fail (or slow down) sending a message. `counterpartyOf`
+    // returns null when there's nobody to tell yet, e.g. the customer writes
+    // before an expert has been assigned.
+    const recipient = counterpartyOf(order, role)
+    if (recipient) {
+      const category = await ctx.db.get(order.categoryId)
+      await enqueueNotification(ctx, {
+        userId: recipient,
+        orderId,
+        kind: 'order_reply',
+        actorRole: role,
+        preview: buildPreview(body, attachmentIds.length),
+        categoryTitle: category?.title,
+      })
+    }
+
+    return messageId
   },
 })
 

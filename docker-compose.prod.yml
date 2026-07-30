@@ -133,6 +133,29 @@ services:
     depends_on:
       - convex-backend
 
+  # ───────────────────────── Telegram notification bot ────────────────────────
+  # Outbound-only worker: long-polls Telegram for /start and /stop, and drains
+  # the Convex notification outbox. No `expose` and no Caddy route — nothing
+  # ever connects TO it, which is why it polls instead of taking a webhook.
+  #
+  # Do NOT scale this past one replica. Telegram permits a single long-polling
+  # consumer per bot token; a second replica would fight the first for updates
+  # and both would see intermittent 409 Conflict.
+  bot:
+    image: ${BOT_IMAGE}
+    restart: unless-stopped
+    environment:
+      # Same bot as the Mini App and Login Widget — users who opened the TMA
+      # have already started a chat with it, so notifications work immediately.
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      CONVEX_SITE_URL: ${CONVEX_SITE_URL}
+      # Must match BOT_SERVICE_SECRET on the Convex *deployment* (layer B) —
+      # this is the container copy (layer A). See DEPLOY.md.
+      BOT_SERVICE_SECRET: ${BOT_SERVICE_SECRET}
+      WEB_ORIGIN: ${WEB_ORIGIN}
+    depends_on:
+      - convex-backend
+
 volumes:
   postgres_data:
   convex_data:

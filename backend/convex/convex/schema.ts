@@ -31,6 +31,11 @@ export default defineSchema({
     // `${telegramId}@telegram.local` placeholder is never mirrored here.
     email: v.optional(v.string()),
     role: v.union(v.literal('customer'), v.literal('executor'), v.literal('admin')),
+    // Set when Telegram refuses delivery for a reason that won't fix itself —
+    // the user blocked the bot, or the account is gone. The notification worker
+    // stops targeting them until they /start again (which clears it). Without
+    // this every future notification would burn a doomed API call.
+    botBlockedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -270,6 +275,44 @@ export default defineSchema({
   })
     .index('by_order', ['orderId'])
     .index('by_provider_payment', ['providerPaymentId']),
+
+  // ── Telegram notification outbox ──────────────────────────────────────────
+  // Convex decides WHAT to notify and records it here; the `apps/bot` worker
+  // decides HOW and WHEN to deliver it. The indirection is the point:
+  //
+  //  - Telegram rate-limits hard (~1 msg/sec/chat) and fails transiently. A
+  //    queue with attempts + backoff survives that; a fire-and-forget fetch
+  //    inside the mutation would drop notifications on the floor, and worse,
+  //    a slow Telegram call would sit inside the write path of `messages.send`.
+  //  - The bot process can restart or be down without losing anything — it
+  //    picks up whatever is still `pending`.
+  //
+  // Rows are never addressed to a person by name. `actorRole` is the only
+  // thing said about who acted, which keeps notifications inside the same
+  // anonymity envelope as the chat itself.
+  notifications: defineTable({
+    userId: v.id('users'),
+    orderId: v.id('orders'),
+    kind: v.union(v.literal('order_reply'), v.literal('moderator_note')),
+    // Role of whoever triggered this — never an identity, never a nickname.
+    actorRole: v.union(v.literal('customer'), v.literal('executor'), v.literal('moderator')),
+    // Short, already-truncated excerpt rendered into the Telegram message.
+    // Snapshotted at enqueue time so delivery never re-reads the thread.
+    preview: v.string(),
+    categoryTitle: v.optional(v.string()),
+    status: v.union(v.literal('pending'), v.literal('delivered'), v.literal('abandoned')),
+    attempts: v.number(),
+    // Backoff gate: the worker ignores rows until this passes.
+    nextAttemptAt: v.number(),
+    lastError: v.optional(v.string()),
+    createdAt: v.number(),
+    deliveredAt: v.optional(v.number()),
+  })
+    .index('by_status', ['status', 'nextAttemptAt'])
+    // Coalescing: a burst of replies on one order collapses into the single
+    // still-undelivered row for that (user, order, kind) instead of queuing a
+    // separate ping per message.
+    .index('by_target', ['userId', 'orderId', 'kind', 'status']),
 
   transactions: defineTable({
     executorProfileId: v.id('executorProfiles'),

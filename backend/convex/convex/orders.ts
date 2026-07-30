@@ -12,6 +12,7 @@ import type { Doc } from './_generated/dataModel'
 import { internalMutation, mutation, query } from './_generated/server'
 import { getUser, requireAdmin, requireExecutor, requireUser } from './lib/auth'
 import { accrueForOrder, recordRating } from './lib/ledger'
+import { buildPreview, enqueueNotification } from './lib/notifications'
 import { loadParticipant, postSystem, transition } from './lib/orders'
 
 // The order lifecycle. Every status change goes through `transition` (guarded
@@ -849,6 +850,22 @@ export const rejectReview = mutation({
       trimmed ? `Диалог отправлен на доработку: ${trimmed}` : 'Диалог отправлен на доработку',
       'staff',
     )
+
+    // Tell the эксперт their work bounced — they're the only one who should
+    // hear about it. Notifying the заказчик here would leak the staff-only
+    // note straight back out through Telegram, undoing the audience split the
+    // chat itself enforces.
+    if (order.assignedExecutorId) {
+      const category = await ctx.db.get(order.categoryId)
+      await enqueueNotification(ctx, {
+        userId: order.assignedExecutorId,
+        orderId,
+        kind: 'moderator_note',
+        actorRole: 'moderator',
+        preview: buildPreview(trimmed || 'Диалог отправлен на доработку', 0),
+        categoryTitle: category?.title,
+      })
+    }
   },
 })
 
