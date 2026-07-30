@@ -42,6 +42,23 @@ COPY --from=pruner /app/out/full/ ./
 # this image env-agnostic (same image runs in staging/prod/laptop).
 ENV CI=1
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# Sentry is the one exception to the env-agnostic rule above. NEXT_PUBLIC_* is
+# inlined into the client bundle by the compiler, so the browser DSN has to be
+# present HERE, at build time — passing it at runtime does nothing and browser
+# errors would silently never report. Changing it therefore needs a rebuild.
+#
+# ORG/PROJECT/AUTH_TOKEN drive source-map upload in next.config.js. All four are
+# optional: unset means no upload and no client SDK, and the build still
+# succeeds (withSentryConfig is configured `silent` with an errorHandler).
+ARG NEXT_PUBLIC_SENTRY_DSN
+ARG SENTRY_ORG
+ARG SENTRY_PROJECT
+ARG SENTRY_AUTH_TOKEN
+ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
+ENV SENTRY_ORG=$SENTRY_ORG
+ENV SENTRY_PROJECT=$SENTRY_PROJECT
+ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
 RUN pnpm exec turbo build --filter=@tax-assistant/web
 
 # Stage 4 — minimal runtime.

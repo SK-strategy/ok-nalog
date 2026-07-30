@@ -77,11 +77,33 @@ if [ "$skip_images" -eq 0 ]; then
     exit 1
   fi
   if [ "$direct" -eq 1 ]; then output=--load; else output=--push; fi
+
+  # Sentry's browser DSN is compiled into the client bundle, so it has to be
+  # supplied at BUILD time — it is the one value that isn't swappable on the
+  # VPS. Sourced from .env.prod (layer C) rather than the environment so a
+  # deploy from a clean shell still bakes it in; forgetting it doesn't fail the
+  # build, it just silently ships apps that never report browser errors.
+  build_args=()
+  if [ -f .env.prod ]; then
+    for var in NEXT_PUBLIC_SENTRY_DSN SENTRY_ORG SENTRY_PROJECT SENTRY_AUTH_TOKEN; do
+      value="$(grep -E "^$var=" .env.prod | head -1 | sed -E 's/^[^=]+=//; s/^"(.*)"$/\1/')"
+      [ -n "$value" ] && build_args+=(--build-arg "$var=$value")
+    done
+  fi
+  if [ ${#build_args[@]} -eq 0 ]; then
+    echo "   ⚠ no Sentry build args found in .env.prod — client-side errors won't report"
+  fi
+
   for app in "${apps[@]}"; do
     echo "── building $app ($sha, $PLATFORM, $output)"
+    # The bot isn't a Next.js app: its DSN is read at runtime from the VPS .env,
+    # so the build args are only meaningful for the three web images.
+    app_args=()
+    if [ "$app" != "bot" ]; then app_args=("${build_args[@]}"); fi
     docker buildx build \
       --platform "$PLATFORM" \
       -f "apps/$app/Dockerfile" \
+      "${app_args[@]}" \
       -t "$REGISTRY/tax-assistant-$app:$sha" \
       -t "$REGISTRY/tax-assistant-$app:latest" \
       "$output" \
