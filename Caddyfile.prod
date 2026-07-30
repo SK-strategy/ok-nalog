@@ -38,6 +38,11 @@ api.oknalog.net {
     @site {
         path /api/auth*
         path /.well-known/*
+        # apps/bot's outbox endpoints (pending/ack/chat). Without this they
+        # fall through to Cloud on :3210 and the worker logs a bare
+        # `/bot/pending → 404 Not Found` every poll — authenticated with
+        # Telegram, but never delivering anything.
+        path /bot/*
     }
     handle @site {
         reverse_proxy convex-backend:3211
