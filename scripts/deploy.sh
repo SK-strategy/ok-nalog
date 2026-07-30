@@ -99,7 +99,21 @@ fi
 if [ "$skip_restart" -eq 0 ]; then
   echo "── syncing docker-compose.prod.yml + Caddyfile.prod"
   wait_for_host
+  caddy_before="$(ssh "$DEPLOY_HOST" "md5sum $DEPLOY_DIR/Caddyfile.prod 2>/dev/null | cut -d' ' -f1" || true)"
   rsync -az docker-compose.prod.yml Caddyfile.prod "$DEPLOY_HOST:$DEPLOY_DIR/"
+  caddy_after="$(ssh "$DEPLOY_HOST" "md5sum $DEPLOY_DIR/Caddyfile.prod 2>/dev/null | cut -d' ' -f1" || true)"
+
+  # Caddyfile.prod is bind-mounted as a SINGLE FILE (./Caddyfile.prod ->
+  # /etc/caddy/Caddyfile). rsync writes a temp file and renames it over the
+  # target, which allocates a NEW inode — and the container is still holding
+  # the old one. So neither the rsync nor `caddy reload` has any effect: the
+  # container keeps serving the previous config, silently. Only recreating the
+  # container re-binds the mount. Guarded on a checksum so the usual deploy
+  # doesn't take Caddy (and with it every site) down for no reason.
+  if [ -n "$caddy_after" ] && [ "$caddy_before" != "$caddy_after" ]; then
+    echo "── Caddyfile changed — recreating caddy so the new inode is picked up"
+    ssh "$DEPLOY_HOST" "cd $DEPLOY_DIR && $COMPOSE up -d --force-recreate caddy"
+  fi
 fi
 
 # ── 3. convex functions ─────────────────────────────────────────────────────
@@ -160,15 +174,27 @@ if [ "$skip_restart" -eq 0 ]; then
   # Self-hosted Convex answers /version with the literal string "unknown" — that's healthy.
   printf '%-28s %s\n' "api /version" "$(curl -sS --max-time 15 https://api.oknalog.net/version || echo FAIL)"
 
-  # The bot serves no HTTP, so curl can't see it. A crashlooping bot still
-  # "exists" in compose ps, so check that it authenticated with Telegram —
-  # that line only prints after getMe() succeeds.
+  # The bot serves no HTTP, so curl can't see it — check its log instead.
+  #
+  # Two separate things can be wrong, and the first hides the second: the bot
+  # authenticates with Telegram (getMe) over the *public internet*, but reaches
+  # the outbox through Caddy. So it happily reports "authenticated as …" while
+  # every poll 404s because /bot/* isn't routed to the Convex site port. Assert
+  # on both, and give the drain loop a couple of cycles to prove itself.
   if printf '%s\n' "${apps[@]}" | grep -qx bot; then
-    printf '%-28s %s\n' "bot" \
-      "$(ssh "$DEPLOY_HOST" "cd $DEPLOY_DIR && $COMPOSE logs --tail=40 bot 2>/dev/null \
-        | grep -c 'authenticated as'" 2>/dev/null | tr -d '\r' | grep -qx 0 \
-        && echo 'NOT AUTHENTICATED — check: docker compose logs bot' \
-        || echo 'authenticated')"
+    sleep 12
+    bot_log="$(ssh "$DEPLOY_HOST" "cd $DEPLOY_DIR && $COMPOSE logs --since 60s bot 2>/dev/null" || true)"
+    if ! printf '%s\n' "$bot_log" | grep -q 'authenticated as'; then
+      status='NOT AUTHENTICATED — bad TELEGRAM_BOT_TOKEN? docker compose logs bot'
+    elif printf '%s\n' "$bot_log" | grep -q 'poll failed'; then
+      # Nearly always one of: /bot/* missing from Caddyfile.prod's @site
+      # matcher, or BOT_SERVICE_SECRET disagreeing between the VPS .env
+      # (layer A) and the Convex deployment (layer B).
+      status="POLLING BROKEN — $(printf '%s\n' "$bot_log" | grep -m1 -o '/bot/pending → .*')"
+    else
+      status='authenticated + draining outbox'
+    fi
+    printf '%-28s %s\n' "bot" "$status"
   fi
 fi
 
