@@ -41,6 +41,10 @@ yarn-error.log*
 .env
 .env*.local
 .env.prod
+# Timestamped backups made before rewriting an env file. These are full copies
+# of real secrets, and without this rule they show up as untracked files that
+# `git add -A` would happily commit.
+.env*.bak.*
 
 # Deployment scratch space (build logs, generated secrets, SSH helpers).
 tmp/
