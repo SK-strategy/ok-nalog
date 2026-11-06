@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 
 // Typed surface for the parts of the Telegram WebApp API we drive. The runtime
 // object is injected by `https://telegram.org/js/telegram-web-app.js`
@@ -68,9 +68,14 @@ export function getTelegramApp(): TelegramWebApp | null {
  * hydration mismatch warnings on SSR-rendered pages.
  */
 export function useTelegramWebApp(): TelegramWebApp | null {
-  const [wa, setWa] = useState<TelegramWebApp | null>(null)
-  useEffect(() => {
-    setWa(getTelegramApp())
-  }, [])
-  return wa
+  return useSyncExternalStore(subscribeNoop, getTelegramApp, getServerSnapshot)
+}
+
+// The WebApp object never changes after the script loads, so there is nothing to subscribe to.
+function subscribeNoop(): () => void {
+  return () => undefined
+}
+
+function getServerSnapshot(): null {
+  return null
 }
