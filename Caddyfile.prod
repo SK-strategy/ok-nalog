@@ -1,4 +1,4 @@
-# Production Caddyfile for oknalog.net.
+# Production Caddyfile. Домен берётся из переменной DOMAIN (.env на сервере).
 # Mounted into the caddy container; needs DNS A records for every hostname
 # below pointing at the VPS before Let's Encrypt will issue.
 
@@ -8,22 +8,22 @@
 }
 
 # ─────────────────────────────── Public site ────────────────────────────────
-oknalog.net {
+{$DOMAIN} {
     reverse_proxy web:3000
 }
 
 # Canonical → apex. 308 keeps method on POSTs.
-www.oknalog.net {
-    redir https://oknalog.net{uri} 308
+www.{$DOMAIN} {
+    redir https://{$DOMAIN}{uri} 308
 }
 
 # ─────────────────────────────────── Admin ──────────────────────────────────
-admin.oknalog.net {
+admin.{$DOMAIN} {
     reverse_proxy admin:3000
 }
 
 # ──────────────────────────── Telegram Mini App ─────────────────────────────
-tma.oknalog.net {
+tma.{$DOMAIN} {
     reverse_proxy tma:3000
 }
 
@@ -34,7 +34,7 @@ tma.oknalog.net {
 # Site paths are a fixed allowlist below. Anything else falls through to Cloud.
 # If you ever add HTTP actions outside /api/auth/* or /.well-known/*, extend
 # the @site matcher here.
-api.oknalog.net {
+api.{$DOMAIN} {
     @site {
         path /api/auth*
         path /.well-known/*
@@ -53,9 +53,9 @@ api.oknalog.net {
 }
 
 # ─────────────────────────── Convex dashboard ───────────────────────────────
-# Sub-subdomain under admin.oknalog.net. Caddy basic auth is the perimeter;
+# Sub-subdomain under admin.{$DOMAIN}. Caddy basic auth is the perimeter;
 # the dashboard's own admin-key login still applies inside.
-convex.admin.oknalog.net {
+convex.admin.{$DOMAIN} {
     basic_auth {
         {$DASHBOARD_USER} {$DASHBOARD_BCRYPT}
     }
