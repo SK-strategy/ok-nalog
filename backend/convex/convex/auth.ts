@@ -450,7 +450,9 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>): BetterAuthOptions
                 // anything the Login Widget / Mini App flows produced.
                 mapOIDCProfileToUser: (claims) => {
                   const c = claims as unknown as { id?: unknown; sub?: unknown }
-                  const telegramId = String(c.id ?? c.sub ?? '')
+                  const asId = (v: unknown): string =>
+                    typeof v === 'string' || typeof v === 'number' ? String(v) : ''
+                  const telegramId = asId(c.id) || asId(c.sub)
                   return {
                     id: telegramId,
                     email: `${telegramId}@telegram.local`,

@@ -15,7 +15,9 @@ import { useTelegramWebApp } from './telegram'
 export function useBackButton(onClick: () => void, enabled = true): void {
   const wa = useTelegramWebApp()
   const handlerRef = useRef(onClick)
-  handlerRef.current = onClick
+  useEffect(() => {
+    handlerRef.current = onClick
+  })
 
   useEffect(() => {
     if (!wa) return

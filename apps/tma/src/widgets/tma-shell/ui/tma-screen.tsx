@@ -150,7 +150,7 @@ function Header({
 
 // ─── browser-fallback MainButton bar ─────────────────────────────────────
 function FallbackMainButton({ mainButton }: { mainButton: MainButtonConfig }) {
-  const isInactive = mainButton.disabled || mainButton.loading
+  const isInactive = Boolean(mainButton.disabled) || Boolean(mainButton.loading)
   return (
     <button
       type="button"

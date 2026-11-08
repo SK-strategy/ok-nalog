@@ -23,7 +23,10 @@ export interface MainButtonConfig {
 export function useMainButton(config: MainButtonConfig | undefined): void {
   const wa = useTelegramWebApp()
   const onClickRef = useRef<(() => void) | undefined>(config?.onClick)
-  onClickRef.current = config?.onClick
+  const latestOnClick = config?.onClick
+  useEffect(() => {
+    onClickRef.current = latestOnClick
+  })
 
   // text + visibility
   useEffect(() => {

@@ -1,0 +1,9 @@
+# Пакет с файлами для сервера: compose, Caddyfile, шаблон .env и скрипты.
+# Сервер забирает его одной командой (см. DEPLOY.md):
+#   docker run --rm -v /opt/ok-nalog:/out ghcr.io/<владелец>/ok-nalog-deploy:latest
+# Контекст сборки — корень репозитория.
+FROM alpine:3.20
+WORKDIR /files
+COPY docker-compose.prod.yml Caddyfile.prod .env.prod.example ./
+COPY deploy/server/ ./
+CMD ["sh", "-c", "cp -r /files/. /out/ && chmod +x /out/*.sh && echo 'Файлы скопированы в /out'"]

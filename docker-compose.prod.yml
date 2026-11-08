@@ -1,10 +1,10 @@
-# Production stack for tax-assistant.oknalog.net
-# Deploy: copy this file + Caddyfile.prod + .env to /opt/tax-assistant on the VPS.
+# Production stack for ОК-налог
+# Deploy: copy this file + Caddyfile.prod + .env to /opt/ok-nalog on the VPS.
 #   docker compose -f docker-compose.prod.yml up -d
 #
 # See DEPLOY.md for the full bootstrap sequence (admin key, JWKS, env vars).
 
-name: tax-assistant
+name: ok-nalog
 
 services:
   # ───────────────────────── Caddy (TLS termination) ──────────────────────────
@@ -23,6 +23,7 @@ services:
       - caddy_data:/data         # LE certs + ACME account key
       - caddy_config:/config
     environment:
+      DOMAIN: ${DOMAIN}
       LE_EMAIL: ${LE_EMAIL}
       DASHBOARD_USER: ${DASHBOARD_USER}
       DASHBOARD_BCRYPT: ${DASHBOARD_BCRYPT}
@@ -57,7 +58,7 @@ services:
   # ───────────────────────── Convex backend (self-hosted) ─────────────────────
   # Two HTTP servers in one container — :3210 (Cloud API + WebSocket sync) and
   # :3211 (Site / HTTP actions, where better-auth's /api/auth/* lives). Both
-  # origins point at the same public hostname (api.oknalog.net); Caddy
+  # origins point at the same public hostname (api.${DOMAIN}); Caddy
   # path-routes between them.
   convex-backend:
     image: ghcr.io/get-convex/convex-backend:latest
@@ -83,7 +84,7 @@ services:
         condition: service_healthy
 
   # ───────────────────────── Convex dashboard ────────────────────────────────
-  # Exposed at convex.admin.oknalog.net behind basic auth. The admin-key login
+  # Exposed at convex.admin.${DOMAIN} behind basic auth. The admin-key login
   # inside the dashboard itself is preserved; Caddy basic auth is the perimeter.
   convex-dashboard:
     image: ghcr.io/get-convex/convex-dashboard:latest
