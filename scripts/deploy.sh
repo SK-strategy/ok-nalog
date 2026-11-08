@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# УСТАРЕЛО: скрипт для прежнего сервера программиста (ghcr.io/netosha, laptop-сборка).
+# Новый процесс описан в DEPLOY.md (GitHub Actions + deploy/server/*.sh).
 # Push local changes to the production VPS. DEPLOY.md covers the one-time
 # bootstrap (admin key, JWKS, deployment env); this automates the
 # "Subsequent deploys" loop:
