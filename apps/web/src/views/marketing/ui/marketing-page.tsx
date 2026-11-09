@@ -5,7 +5,7 @@ import { ArrowRight, Clock, FileText, MessageSquareLock, Wallet } from 'lucide-r
 
 import { Button } from '@tax-assistant/ui/button'
 
-import { TelegramLoginButton } from '~/features/auth'
+import { LoginButton } from '~/features/auth'
 import { useSession } from '~/entities/session'
 
 const STEPS = [
@@ -61,7 +61,7 @@ export function MarketingPage() {
             </Link>
           </Button>
         ) : (
-          <TelegramLoginButton />
+          <LoginButton />
         )}
       </section>
 
@@ -97,12 +97,12 @@ export function MarketingPage() {
             text-center"
         >
           <h2 className="text-foreground max-w-xl text-2xl font-bold tracking-tight">
-            Войдите через Telegram, чтобы задать первый вопрос
+            Войдите по почте, чтобы задать первый вопрос
           </h2>
           <p className="text-text-soft max-w-lg text-sm leading-relaxed">
             Ваше имя и контакты эксперт не видит — только описание обращения и приложенные файлы.
           </p>
-          <TelegramLoginButton />
+          <LoginButton />
         </section>
       )}
     </main>

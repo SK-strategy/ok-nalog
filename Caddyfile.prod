@@ -22,10 +22,11 @@ admin.{$DOMAIN} {
     reverse_proxy admin:3000
 }
 
+# Telegram Mini App is switched off for now (login is by email code only).
 # ──────────────────────────── Telegram Mini App ─────────────────────────────
-tma.{$DOMAIN} {
-    reverse_proxy tma:3000
-}
+# tma.{$DOMAIN} {
+#     reverse_proxy tma:3000
+# }
 
 # ─────────────────────────── Convex (Cloud + Site) ──────────────────────────
 # One public hostname collapses both Convex servers:

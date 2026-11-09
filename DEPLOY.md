@@ -1,35 +1,43 @@
 # Развёртывание ОК-налог на своём сервере
 
 Схема: GitHub Actions собирает Docker-образы → сервер забирает их из GitHub Container Registry →
-Caddy выдаёт HTTPS → приложения (web, admin, tma, bot) + Convex + Postgres работают в Docker.
+Caddy выдаёт HTTPS → приложения (web, admin) + Convex + Postgres работают в Docker.
 Функции Convex выкатываются отдельным workflow. Ничего не нужно собирать на своём компьютере.
 
 | Адрес                         | Что это                                          |
 | ----------------------------- | ------------------------------------------------ |
 | `oknalog.net` (+ `www`)       | Публичный сайт                                   |
 | `admin.oknalog.net`           | Админка                                          |
-| `tma.oknalog.net`             | Telegram Mini App                                |
-| `api.oknalog.net`             | Convex (API, синхронизация, вход через Telegram) |
+| `api.oknalog.net`             | Convex (API, синхронизация, вход по коду)        |
 | `convex.admin.oknalog.net`    | Панель Convex (под паролем)                      |
 
 Минимальный сервер: 2 vCPU, 4 ГБ RAM, 40 ГБ диска, Ubuntu 24.04, публичный IPv4.
-Текущий сервер: VDSina, Москва, 4 vCPU / 8 ГБ / 150 ГБ, IP `138.16.183.89`.
+Вход на сайт — только по email и коду из письма (Telegram, Mini App и бот отключены, их код
+закомментирован). Письма отправляет Resend, нужен его API-ключ и подтверждённый домен (шаг 0).
 
 ---
 
 ## Первый запуск
 
+### 0. Почта для кодов входа (Resend)
+
+1. Зарегистрируйтесь на resend.com → Domains → Add Domain → `oknalog.net`.
+2. Resend покажет DNS-записи (DKIM, SPF/MX для `send`). Добавьте их в DNS домена. Старые записи
+   Resend прежнего владельца (`resend._domainkey`, `send`, MX на `inbound-smtp…amazonaws.com`) удалите,
+   чтобы они не мешали. Дождитесь статуса Verified.
+3. API Keys → Create API Key (Sending access). Ключ понадобится установщику.
+
 ### 1. DNS
 
-В панели, где управляется домен, создайте шесть A-записей на IP сервера:
-`@`, `www`, `admin`, `tma`, `api`, `convex.admin` → `138.16.183.89`.
+В панели, где управляется домен, создайте пять A-записей на IP сервера:
+`@`, `www`, `admin`, `api`, `convex.admin` → IP сервера.
 Проверка: `nslookup api.oknalog.net` должен вернуть IP сервера.
 
 ### 2. Образы в GitHub
 
 В репозитории: Actions → **Build images** → Run workflow (или просто слейте ветку в `main`).
 Дождитесь зелёного статуса. Образы появятся в Packages профиля `SK-strategy`
-(`ok-nalog-web`, `-admin`, `-tma`, `-bot`, `-deploy`).
+(`ok-nalog-web`, `-admin`, `-deploy`; образы `-tma` и `-bot` тоже собираются, но не запускаются).
 
 ### 3. Токен для сервера
 
@@ -39,7 +47,7 @@ Generate new token, право только `read:packages`. Сохраните 
 
 ### 4. Установка на сервере
 
-Откройте веб-консоль сервера в панели VDSina (или `ssh root@138.16.183.89`) и выполните:
+Откройте веб-консоль сервера в панели VDSina (или `ssh root@IP_СЕРВЕРА`) и выполните:
 
 ```bash
 apt-get update && apt-get install -y docker.io
@@ -49,7 +57,7 @@ docker run --rm -v /opt/ok-nalog:/out ghcr.io/sk-strategy/ok-nalog-deploy:latest
 cd /opt/ok-nalog && bash bootstrap.sh
 ```
 
-Скрипт задаст несколько вопросов (домен, email, токен бота из @BotFather, ключ Resend — по желанию),
+Скрипт задаст несколько вопросов (домен, email для сертификатов, ключ Resend и адрес отправителя),
 сам поставит Docker/файрвол/защиту от подбора паролей, сгенерирует все секреты, запустит сервисы
 и включит ежедневные копии базы. В конце он напечатает три значения для следующего шага.
 
@@ -64,28 +72,16 @@ cd /opt/ok-nalog && bash bootstrap.sh
 Actions → **Convex deploy** → Run workflow, отметьте «seed». Это выложит функции, применит
 настройки и загрузит справочник. При первом запуске создаётся и ключ подписи сессий (JWKS).
 
-### 7. BotFather
-
-В `@BotFather`: `/setdomain` для бота → `oknalog.net`; Mini App → URL `https://tma.oknalog.net`.
-Если включён вход через OIDC, Redirect URL = `https://api.oknalog.net/api/auth/callback/telegram-oidc`
-(и добавьте `TELEGRAM_OIDC_CLIENT_ID` / `TELEGRAM_OIDC_CLIENT_SECRET` в секрет `CONVEX_ENV`,
-затем снова запустите Convex deploy).
-
-### 8. Проверка
+### 7. Проверка
 
 ```bash
 curl -sS -o /dev/null -w '%{http_code}\n' https://oknalog.net
 curl -sS -o /dev/null -w '%{http_code}\n' https://admin.oknalog.net
-curl -sS -o /dev/null -w '%{http_code}\n' https://tma.oknalog.net
 curl -sS https://api.oknalog.net/version
-docker compose -f /opt/ok-nalog/docker-compose.prod.yml logs bot | grep 'authenticated as'
 ```
 
-Затем войдите на сайт через Telegram и назначьте себе роль `admin`: панель Convex
+Затем войдите на сайт (почта → код из письма) и назначьте себе роль `admin`: панель Convex
 (`https://convex.admin.oknalog.net`) → таблица `users` → поле `role`.
-
-> Не запускайте больше одного контейнера `bot` и не запускайте бота локально, пока работает
-> сервер: у токена Telegram может быть только один получатель обновлений.
 
 ---
 
@@ -114,17 +110,18 @@ docker compose -f /opt/ok-nalog/docker-compose.prod.yml logs bot | grep 'authent
 
 ## Если что-то не работает
 
-**Caddy не выпускает сертификаты.** Проверьте, что все шесть A-записей указывают на сервер и порты
+**Caddy не выпускает сертификаты.** Проверьте, что все пять A-записей указывают на сервер и порты
 80/443 открыты (`ufw status`). Лог: `docker compose -f docker-compose.prod.yml logs caddy`.
 
-**`unable_to_get_user_info` при входе.** Неверный `TELEGRAM_OIDC_CLIENT_SECRET` или Redirect URL в
-BotFather не совпадает посимвольно с `https://api.oknalog.net/api/auth/callback/telegram-oidc`.
-
-**`account_not_linked` / «No session found».** В коде `accountLinking.requireLocalEmailVerified`
-должен быть `false` (почты Telegram синтетические); проверьте, что выложена свежая версия функций.
+**Код входа не приходит на почту.** Проверьте в Resend (Logs), что домен Verified и письмо ушло;
+посмотрите папку «Спам». Ошибки отправки пишутся в логи Convex (панель Convex → Logs).
 
 **Синхронизация зависает на «connecting».** Путь `/api/sync` должен идти в Convex Cloud (`:3210`);
 в Caddyfile на сайт (`:3211`) уходят только `/api/auth*`, `/.well-known/*`, `/bot/*`.
+
+**Включить Telegram обратно.** Раскомментируйте сервисы `tma` и `bot` в `docker-compose.prod.yml`, блок
+`tma` в `Caddyfile.prod`, кнопки входа в `apps/web`/`apps/admin` (помечены «switched off»), добавьте
+DNS-запись `tma` и настройки Telegram в `CONVEX_ENV`. Серверу нужен доступ к `api.telegram.org`.
 
 **Панель Convex просит пароль снова и снова.** Хэш в `.env` (`DASHBOARD_BCRYPT`) должен быть в
 одинарных кавычках, как его записал `bootstrap.sh`. Пароль лежит в `dashboard-password.txt`

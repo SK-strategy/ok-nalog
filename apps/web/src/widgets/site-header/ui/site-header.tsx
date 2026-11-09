@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { Check, ChevronDown } from 'lucide-react'
 
 import type { HomeMode } from '~/features/switch-mode'
-import { SignOutButton, TelegramLoginButton } from '~/features/auth'
+import { LoginButton, SignOutButton } from '~/features/auth'
 import { MODE_HINT, MODE_LABEL, MODE_ROUTE, useHomeMode } from '~/features/switch-mode'
 import { useSession } from '~/entities/session'
 import { cn } from '~/shared/lib'
@@ -76,7 +76,7 @@ export function SiteHeader() {
               <SignOutButton />
             </>
           ) : (
-            <TelegramLoginButton />
+            <LoginButton />
           )}
         </nav>
 
@@ -85,7 +85,7 @@ export function SiteHeader() {
           {me ? (
             <MobileMenu current={currentMode} allowed={allowed} userName={me.user.name} />
           ) : (
-            <TelegramLoginButton />
+            <LoginButton />
           )}
         </div>
       </div>

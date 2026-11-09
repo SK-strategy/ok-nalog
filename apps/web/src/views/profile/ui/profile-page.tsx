@@ -1,10 +1,10 @@
 'use client'
 
-import { Check, Send } from 'lucide-react'
-
+// Telegram linking is switched off for now (login is by email code only).
+// import { Check, Send } from 'lucide-react'
 import { AuthGate, SignOutButton } from '~/features/auth'
 import { LinkEmailCard } from '~/features/link-email'
-import { LinkTelegramCard } from '~/features/link-telegram'
+// import { LinkTelegramCard } from '~/features/link-telegram'
 import { useSession } from '~/entities/session'
 import { UserAvatar } from '~/shared/ui/user-avatar'
 
@@ -35,7 +35,7 @@ function ProfileBody() {
   const { me } = useSession()
   if (!me) return null
 
-  const hasTelegram = !!me.user.telegramId
+  // const hasTelegram = !!me.user.telegramId // Telegram linking is switched off for now
 
   return (
     <>
@@ -59,6 +59,7 @@ function ProfileBody() {
           Способы входа
         </h2>
         <LinkEmailCard />
+        {/* Telegram linking is switched off for now:
         {hasTelegram ? (
           <div className="bg-card flex items-center gap-3 rounded-2xl border p-4">
             <div
@@ -78,9 +79,7 @@ function ProfileBody() {
         ) : (
           <LinkTelegramCard />
         )}
-        <p className="text-text-soft pt-1 text-xs leading-relaxed">
-          Привязанные почта и Telegram — это один и тот же аккаунт с общими обращениями.
-        </p>
+        */}
       </section>
 
       <div className="border-separator border-t pt-5">

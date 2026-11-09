@@ -5,7 +5,7 @@
 set -euo pipefail
 cd /opt/ok-nalog
 COMPOSE="docker compose -f docker-compose.prod.yml"
-$COMPOSE pull web admin tma bot
-$COMPOSE up -d web admin tma bot
+$COMPOSE pull web admin
+$COMPOSE up -d web admin
 docker image prune -f >/dev/null
 $COMPOSE ps
