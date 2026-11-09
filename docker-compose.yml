@@ -32,7 +32,7 @@ services:
       retries: 10
 
   convex-backend:
-    image: ghcr.io/get-convex/convex-backend:latest
+    image: ghcr.io/convex/convex-backend:latest
     restart: unless-stopped
     stop_grace_period: 10s
     stop_signal: SIGINT
@@ -62,7 +62,7 @@ services:
         condition: service_healthy
 
   convex-dashboard:
-    image: ghcr.io/get-convex/convex-dashboard:latest
+    image: ghcr.io/convex/convex-dashboard:latest
     restart: unless-stopped
     stop_grace_period: 10s
     stop_signal: SIGINT

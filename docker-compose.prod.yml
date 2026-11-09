@@ -61,7 +61,7 @@ services:
   # origins point at the same public hostname (api.${DOMAIN}); Caddy
   # path-routes between them.
   convex-backend:
-    image: ghcr.io/get-convex/convex-backend:latest
+    image: ghcr.io/convex/convex-backend:latest
     restart: unless-stopped
     stop_grace_period: 10s
     stop_signal: SIGINT
@@ -87,7 +87,7 @@ services:
   # Exposed at convex.admin.${DOMAIN} behind basic auth. The admin-key login
   # inside the dashboard itself is preserved; Caddy basic auth is the perimeter.
   convex-dashboard:
-    image: ghcr.io/get-convex/convex-dashboard:latest
+    image: ghcr.io/convex/convex-dashboard:latest
     restart: unless-stopped
     stop_grace_period: 10s
     stop_signal: SIGINT
