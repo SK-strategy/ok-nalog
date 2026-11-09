@@ -44,9 +44,10 @@ if [ ! -f .env ]; then
   ask DOMAIN "Домен проекта" "oknalog.net"
   ask OWNER "Владелец образов на GitHub (в нижнем регистре)" "sk-strategy"
   ask LE_EMAIL "Email для сертификатов Let's Encrypt"
-  ask TELEGRAM_BOT_TOKEN "Токен бота из @BotFather (ввод скрыт)" "" secret
-  ask BOT_USERNAME "Имя бота без @" "Oknalog_net_bot"
-  ask RESEND_API_KEY "Ключ Resend для писем (Enter — пропустить)" ""
+  echo "Вход на сайт идёт по коду из письма. Письма отправляет Resend (resend.com):"
+  echo "нужен API-ключ и подтверждённый домен $DOMAIN (см. DEPLOY.md)."
+  ask RESEND_API_KEY "Ключ Resend API (начинается с re_, ввод скрыт)" "" secret
+  ask MAIL_FROM_LOCAL "Адрес отправителя писем (до @), например auth" "auth"
 
   cp .env.prod.example .env
   chmod 600 .env
@@ -59,23 +60,17 @@ if [ ! -f .env ]; then
   setenv POSTGRES_PASSWORD "$(openssl rand -hex 24)"
   setenv INSTANCE_SECRET "$(openssl rand -hex 32)"
   setenv LE_EMAIL "$LE_EMAIL"
-  setenv TELEGRAM_BOT_TOKEN "$TELEGRAM_BOT_TOKEN"
   setenv BOT_SERVICE_SECRET "$BOT_SECRET"
   setenv DASHBOARD_BCRYPT "'$DASH_HASH'"
 
   umask 077
   {
     echo "BETTER_AUTH_SECRET=$(openssl rand -hex 32)"
-    echo "TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN"
-    echo "NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=$BOT_USERNAME"
     echo "WEB_ORIGIN=https://$DOMAIN"
     echo "ADMIN_ORIGIN=https://admin.$DOMAIN"
-    echo "TMA_ORIGIN=https://tma.$DOMAIN"
     echo "BOT_SERVICE_SECRET=$BOT_SECRET"
-    if [ -n "$RESEND_API_KEY" ]; then
-      echo "RESEND_API_KEY=$RESEND_API_KEY"
-      echo "RESEND_FROM=Налоговый помощник <auth@$DOMAIN>"
-    fi
+    echo "RESEND_API_KEY=$RESEND_API_KEY"
+    echo "RESEND_FROM=ОК-налог <$MAIL_FROM_LOCAL@$DOMAIN>"
   } > convex.env
   echo "$DASH_PASS" > dashboard-password.txt
 else
@@ -85,7 +80,7 @@ DOMAIN="$(grep -E '^DOMAIN=' .env | cut -d= -f2-)"
 
 echo "== 3/7 Проверка DNS"
 SERVER_IP="$(curl -fsS4 https://ifconfig.me || true)"
-for h in "$DOMAIN" "admin.$DOMAIN" "tma.$DOMAIN" "api.$DOMAIN" "convex.admin.$DOMAIN"; do
+for h in "$DOMAIN" "admin.$DOMAIN" "api.$DOMAIN" "convex.admin.$DOMAIN"; do
   got="$(getent ahostsv4 "$h" | awk 'NR==1{print $1}')"
   if [ "$got" = "$SERVER_IP" ]; then echo "  ok   $h -> $got"; else echo "  !!   $h -> ${got:-нет записи} (ожидается $SERVER_IP)"; fi
 done
@@ -107,8 +102,8 @@ setenv CONVEX_SELF_HOSTED_ADMIN_KEY "$KEY"
 $COMPOSE up -d convex-dashboard
 
 echo "== 6/7 Приложения"
-$COMPOSE pull web admin tma bot
-$COMPOSE up -d web admin tma bot
+$COMPOSE pull web admin
+$COMPOSE up -d web admin
 
 echo "== 7/7 Ежедневные копии"
 install -m 755 backup.sh /usr/local/bin/ok-nalog-backup
