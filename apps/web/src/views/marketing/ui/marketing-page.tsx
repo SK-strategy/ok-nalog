@@ -2,6 +2,7 @@ import { Comparison } from './sections/comparison'
 import { Deliverables } from './sections/deliverables'
 import { DopPrinciples } from './sections/dop-principles'
 import { Experts } from './sections/experts'
+import { Faq } from './sections/faq'
 import { FinalCta } from './sections/final-cta'
 import { ForExperts } from './sections/for-experts'
 import { Founder } from './sections/founder'
@@ -30,6 +31,7 @@ export function MarketingPage() {
       <DopPrinciples />
       <Privacy />
       <ForExperts />
+      <Faq />
       <FinalCta />
     </main>
   )
