@@ -1,3 +1,4 @@
+import { Comparison } from './sections/comparison'
 import { Deliverables } from './sections/deliverables'
 import { Experts } from './sections/experts'
 import { Founder } from './sections/founder'
@@ -21,6 +22,7 @@ export function MarketingPage() {
       <Deliverables />
       <Experts />
       <Founder />
+      <Comparison />
     </main>
   )
 }
