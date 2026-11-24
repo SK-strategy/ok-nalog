@@ -14,3 +14,11 @@ export const HERO = {
   ctaAuthed: 'Перейти к обращениям',
   ctaSecondary: 'Как это работает',
 } as const
+
+/** Section 2 — proof strip (brief §4). Numbers must not change (24 ч — §14). */
+export const PROOF = [
+  { value: '300 лет', label: 'в контрольных подразделениях ФНС' },
+  { value: '15 лет', label: 'основатель в системе' },
+  { value: '24 часа', label: 'на ответ эксперта' },
+  { value: 'Шифрование', label: 'файл шифруется сразу при загрузке' },
+] as const
