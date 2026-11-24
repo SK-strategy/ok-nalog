@@ -1,6 +1,7 @@
 import { Hero } from './sections/hero'
 import { ProofStrip } from './sections/proof-strip'
 import { Situations } from './sections/situations'
+import { Steps } from './sections/steps'
 
 /**
  * Landing composition. Server component: every section is RSC except the
@@ -13,6 +14,7 @@ export function MarketingPage() {
       <Hero />
       <ProofStrip />
       <Situations />
+      <Steps />
     </main>
   )
 }

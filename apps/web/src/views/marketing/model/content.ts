@@ -41,3 +41,36 @@ export const TOPICS = [
   { code: 'registration', title: 'Регистрационные действия', expertCount: 5 },
   { code: 'other', title: 'Прочее', expertCount: 9 },
 ] as const
+
+/**
+ * Section 4 — process steps. The ДОП principles are woven into the steps as
+ * explanation, not slogans (brief §4). Step 3 — 24 ч (§14); step 2 mentions
+ * topic-based routing.
+ */
+export const STEPS = [
+  {
+    action: 'Загрузите документ или опишите ситуацию',
+    body: 'Файл шифруется сразу при загрузке.',
+    principle: 'приватно',
+  },
+  {
+    action: 'Материал попадает к экспертам',
+    body: '300 лет в контрольных подразделениях ФНС. Заявка уходит эксперту по вашей тематике.',
+    principle: 'достоверно',
+  },
+  {
+    action: 'Ответ в срок',
+    body: 'Не более 24 часов.',
+    principle: 'оперативно',
+  },
+  {
+    action: 'Разбор строго по вашим документам',
+    body: 'Клинический подход: только ваша ситуация, без общих слов.',
+    principle: 'персонализировано',
+  },
+  {
+    action: 'Прогноз и план',
+    body: 'Какое решение будет принято и как к нему готовиться.',
+    principle: 'предиктивно',
+  },
+] as const
