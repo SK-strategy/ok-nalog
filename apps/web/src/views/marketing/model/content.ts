@@ -94,3 +94,71 @@ export const DELIVERABLES = [
     body: 'Чего ждать от инспектора, какие шаги последуют, как готовиться.',
   },
 ] as const
+
+/**
+ * Section 6 — experts. Anonymous dossiers: role, function, tenure, scale —
+ * never the person. Mixed roster of active and former officers, so the copy
+ * says "работают или работали" and avoids pushing «экс-».
+ * TODO: заменить на реальные профили.
+ */
+export const EXPERTS_INTRO = {
+  title: 'Наши эксперты',
+  lead: 'Они не изучали систему по учебникам. Они её строили.',
+  note: 'Личность не раскрываем. Раскрываем, где сидели и что делали.',
+} as const
+
+export const EXPERTS = [
+  {
+    id: '01',
+    position: 'Начальник инспекции',
+    func: 'Выездные проверки',
+    experience: '15 лет в ВНП',
+    scale: 'начисления на 3 млрд ₽',
+    status: 'consulting',
+  },
+  {
+    id: '02',
+    position: 'Заместитель начальника инспекции',
+    func: 'Предпроверочный анализ',
+    experience: '10 лет в ППА',
+    scale: 'более 200 предпроверочных анализов',
+    status: 'active',
+  },
+  {
+    id: '03',
+    position: 'Главный методолог управления',
+    func: 'Методология',
+    experience: '20 лет в методологии',
+    scale: 'методические письма для инспекций региона',
+    status: 'consulting',
+  },
+  {
+    id: '04',
+    position: 'Начальник отдела камеральных проверок',
+    func: 'Камеральные проверки',
+    experience: '12 лет в камеральном контроле',
+    scale: 'тысячи камеральных проверок в год',
+    status: 'active',
+  },
+  {
+    id: '05',
+    position: 'Начальник отдела урегулирования споров',
+    func: 'Споры',
+    experience: '8 лет в спорах',
+    scale: 'более 150 дел в досудебном порядке',
+    status: 'consulting',
+  },
+  {
+    id: '06',
+    position: 'Заместитель начальника отдела',
+    func: 'Начисления',
+    experience: '11 лет в начислениях',
+    scale: 'категории: НДС, прибыль, НДФЛ',
+    status: 'active',
+  },
+] as const
+
+export const EXPERT_STATUS_LABEL = {
+  active: 'В системе',
+  consulting: 'В консалтинге',
+} as const

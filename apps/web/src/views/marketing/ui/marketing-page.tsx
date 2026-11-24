@@ -1,4 +1,5 @@
 import { Deliverables } from './sections/deliverables'
+import { Experts } from './sections/experts'
 import { Hero } from './sections/hero'
 import { ProofStrip } from './sections/proof-strip'
 import { Situations } from './sections/situations'
@@ -17,6 +18,7 @@ export function MarketingPage() {
       <Situations />
       <Steps />
       <Deliverables />
+      <Experts />
     </main>
   )
 }
