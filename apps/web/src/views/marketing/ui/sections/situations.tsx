@@ -116,7 +116,11 @@ export function Situations() {
 
       <div className="mt-6 flex justify-center">
         <Button asChild size="lg" className="shadow-accent">
-          <Link href={selected ? `/orders?topic=${selected.code}` : '/orders'}>
+          {/* /orders/new renders AuthGate inline (no redirect), so ?topic=
+              survives the email-code login for guests; signed-in users land
+              on the form directly. The form itself doesn't consume topic
+              yet — wiring topic → categoryId is the next step. */}
+          <Link href={selected ? `/orders/new?topic=${selected.code}` : '/orders/new'}>
             {selected ? `Загрузить документ по теме «${selected.title}»` : HERO.ctaGuest}
             <ArrowRight className="size-4" />
           </Link>
