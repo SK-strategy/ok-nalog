@@ -99,7 +99,7 @@ export function Situations() {
               </div>
               <div>
                 <div className="text-foreground text-sm leading-tight font-bold">{topic.title}</div>
-                <div className="text-hint mt-1 text-xs">{TOPIC_SUBTITLE}</div>
+                <div className="text-text-soft mt-1 text-sm">{TOPIC_SUBTITLE}</div>
               </div>
             </button>
           )
