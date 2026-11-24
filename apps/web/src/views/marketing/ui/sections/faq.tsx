@@ -32,7 +32,8 @@ export function Faq() {
                 aria-expanded={isOpen}
                 aria-controls={panelId}
                 onClick={() => setOpen(isOpen ? null : i)}
-                className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+                className="focus-visible:ring-ring/50 flex w-full items-center justify-between gap-3
+                  rounded-2xl px-5 py-4 text-left outline-none focus-visible:ring-[3px]"
               >
                 <span className="text-foreground text-[15px] leading-snug font-semibold">
                   {item.q}

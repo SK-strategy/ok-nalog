@@ -44,7 +44,11 @@ export function SiteFooter() {
 
 function FooterLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className="text-text-soft hover:text-foreground text-[13px]">
+    <Link
+      href={href}
+      className="text-text-soft hover:text-foreground focus-visible:ring-ring/50 rounded-sm
+        text-[13px] outline-none focus-visible:ring-[3px]"
+    >
       {children}
     </Link>
   )

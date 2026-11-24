@@ -74,8 +74,9 @@ export function Situations() {
               aria-pressed={isSelected}
               onClick={() => toggle(topic.code)}
               className={cn(
-                `flex min-h-[120px] flex-col justify-between gap-3 rounded-2xl border p-4 text-left
-                transition-colors`,
+                `focus-visible:ring-ring/50 flex min-h-[120px] flex-col justify-between gap-3
+                rounded-2xl border p-4 text-left transition-colors outline-none
+                focus-visible:ring-[3px]`,
                 isSelected
                   ? 'border-primary bg-primary-soft'
                   : 'bg-card hover:bg-secondary/60 border-transparent',

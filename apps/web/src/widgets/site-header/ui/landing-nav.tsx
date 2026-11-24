@@ -81,8 +81,9 @@ export function LandingBurger({ isAuthed }: { isAuthed: boolean }) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Меню"
-        className="bg-secondary text-foreground hover:bg-secondary/80 flex size-9 items-center
-          justify-center rounded-lg transition-colors"
+        className="bg-secondary text-foreground hover:bg-secondary/80 focus-visible:ring-ring/50
+          flex size-9 items-center justify-center rounded-lg transition-colors outline-none
+          focus-visible:ring-[3px]"
       >
         <Menu className="size-4" />
       </button>
