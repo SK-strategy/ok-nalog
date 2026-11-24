@@ -234,3 +234,13 @@ export const PRIVACY = [
     body: 'Эксперт видит только описание обращения и приложенные файлы — не ваше имя.',
   },
 ] as const
+
+/**
+ * Section 11 — for experts. Closed section: no public link, no form, no
+ * mailto. The closedness is the quality signal, not a barrier.
+ */
+export const FOR_EXPERTS = {
+  badge: 'Закрытый раздел',
+  title: 'Вы из системы? Здесь ваша экспертиза стоит дорого.',
+  body: 'Попасть сюда можно только по рекомендации действующих экспертов платформы. Публичной ссылки нет.',
+} as const

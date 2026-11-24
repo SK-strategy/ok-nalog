@@ -2,6 +2,7 @@ import { Comparison } from './sections/comparison'
 import { Deliverables } from './sections/deliverables'
 import { DopPrinciples } from './sections/dop-principles'
 import { Experts } from './sections/experts'
+import { ForExperts } from './sections/for-experts'
 import { Founder } from './sections/founder'
 import { Hero } from './sections/hero'
 import { Privacy } from './sections/privacy'
@@ -27,6 +28,7 @@ export function MarketingPage() {
       <Comparison />
       <DopPrinciples />
       <Privacy />
+      <ForExperts />
     </main>
   )
 }
