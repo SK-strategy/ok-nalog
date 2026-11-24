@@ -162,3 +162,11 @@ export const EXPERT_STATUS_LABEL = {
   active: 'В системе',
   consulting: 'В консалтинге',
 } as const
+
+/** Section 7 — founder, the personal guarantee (brief §4). No photo yet. */
+export const FOUNDER = {
+  name: 'Константин Персиянов',
+  title: 'Экс-заместитель руководителя УФНС России по Томской области, создатель сервиса',
+  facts: '15 лет в госорганах, 9 из них в структуре ФНС',
+  quote: 'Мы не пересказываем Налоговый кодекс — мы знаем, как принимаются решения.',
+} as const
