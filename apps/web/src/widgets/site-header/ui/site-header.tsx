@@ -55,12 +55,17 @@ export function SiteHeader() {
   return (
     <header className="border-separator bg-background sticky top-0 z-30 border-b">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
-        <Link href="/" className="text-foreground text-base font-bold tracking-tight">
+        <Link
+          href="/"
+          className="text-foreground text-base font-bold tracking-tight whitespace-nowrap"
+        >
           Налоговый помощник
         </Link>
 
-        {/* Desktop: explicit links + user + sign-out */}
-        <nav className="hidden items-center gap-5 text-sm sm:flex">
+        {/* Desktop: explicit links + user + sign-out. On the landing the
+            anchor nav is wider, so it only fits from lg — below that the
+            burger takes over. Product routes keep the original sm split. */}
+        <nav className={cn('hidden items-center gap-5 text-sm', isLanding ? 'lg:flex' : 'sm:flex')}>
           {isLanding ? (
             <LandingNav isAuthed={!!me} />
           ) : me ? (
@@ -91,8 +96,8 @@ export function SiteHeader() {
           )}
         </nav>
 
-        {/* Mobile: single combined dropdown */}
-        <div className="sm:hidden">
+        {/* Mobile: single combined dropdown (burger up to lg on landing) */}
+        <div className={isLanding ? 'lg:hidden' : 'sm:hidden'}>
           {isLanding ? (
             <LandingBurger isAuthed={!!me} />
           ) : me ? (
