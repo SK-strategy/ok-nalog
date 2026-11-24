@@ -40,7 +40,7 @@ export function Experts() {
                     style={{ backgroundImage: NOISE_BG }}
                   />
                 </div>
-                <div>
+                <div className="whitespace-nowrap">
                   <div className="text-hint font-mono text-[11px] tracking-[0.08em] uppercase">
                     Досье {expert.id}
                   </div>
@@ -52,10 +52,10 @@ export function Experts() {
               <span
                 className={
                   expert.status === 'active'
-                    ? `border-primary/40 text-primary -rotate-2 rounded-md border px-2 py-0.5
-                      text-[11px] font-bold tracking-wide uppercase`
-                    : `border-separator-strong text-text-soft -rotate-2 rounded-md border px-2
-                      py-0.5 text-[11px] font-bold tracking-wide uppercase`
+                    ? `border-primary/40 text-primary shrink-0 -rotate-2 rounded-md border px-2
+                      py-0.5 text-[11px] font-bold tracking-wide whitespace-nowrap uppercase`
+                    : `border-separator-strong text-text-soft shrink-0 -rotate-2 rounded-md border
+                      px-2 py-0.5 text-[11px] font-bold tracking-wide whitespace-nowrap uppercase`
                 }
               >
                 {EXPERT_STATUS_LABEL[expert.status]}
