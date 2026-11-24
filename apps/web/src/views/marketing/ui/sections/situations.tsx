@@ -22,7 +22,7 @@ import { Button } from '@tax-assistant/ui/button'
 
 import { cn } from '~/shared/lib'
 
-import { HERO, TOPICS } from '../../model/content'
+import { HERO, TOPIC_SUBTITLE, TOPICS } from '../../model/content'
 
 const ICONS: Record<string, LucideIcon> = {
   tax_audits: ClipboardCheck,
@@ -38,16 +38,6 @@ const ICONS: Record<string, LucideIcon> = {
 }
 
 const VISIBLE_COUNT = 8
-
-/** эксперт / эксперта / экспертов */
-function pluralExperts(n: number): string {
-  const mod100 = n % 100
-  const mod10 = n % 10
-  if (mod100 >= 11 && mod100 <= 14) return 'экспертов'
-  if (mod10 === 1) return 'эксперт'
-  if (mod10 >= 2 && mod10 <= 4) return 'эксперта'
-  return 'экспертов'
-}
 
 /**
  * Section 3 — topics catalog. Client island: selection lives in the URL
@@ -99,9 +89,7 @@ export function Situations() {
               </div>
               <div>
                 <div className="text-foreground text-sm leading-tight font-bold">{topic.title}</div>
-                <div className="text-hint mt-1 text-xs">
-                  {topic.expertCount} {pluralExperts(topic.expertCount)}
-                </div>
+                <div className="text-hint mt-1 text-xs">{TOPIC_SUBTITLE}</div>
               </div>
             </button>
           )

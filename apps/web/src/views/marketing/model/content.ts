@@ -24,23 +24,27 @@ export const PROOF = [
 ] as const
 
 /**
- * Section 3 — topics catalog. Codes/titles mirror the real nomenclature in
- * backend/convex/convex/seedData.ts (CATEGORIES_SEED); keep in sync manually
- * until the landing reads it from the backend.
- * TODO: replace expertCount with real per-topic expert counts.
+ * Section 3 — topics catalog. All 10 codes/titles are the real nomenclature
+ * from backend/convex/convex/seedData.ts (CATEGORIES_SEED) — nothing
+ * invented; keep in sync manually until the landing reads it from the
+ * backend. Subtitle is deliberately number-free: per-topic expert counts
+ * don't exist yet, and a mock count would read as fact.
  */
 export const TOPICS = [
-  { code: 'tax_audits', title: 'Налоговые проверки', expertCount: 14 },
-  { code: 'tax_authority_interaction', title: 'Взаимодействие с налоговой', expertCount: 11 },
-  { code: 'enforcement', title: 'Принудительные меры и взыскание', expertCount: 8 },
-  { code: 'main_taxes', title: 'Основные налоги', expertCount: 12 },
-  { code: 'special_regimes', title: 'Спецрежимы', expertCount: 6 },
-  { code: 'property_taxes', title: 'Имущественные налоги', expertCount: 4 },
-  { code: 'resource_taxes', title: 'Ресурсные налоги и акцизы', expertCount: 3 },
-  { code: 'reporting', title: 'Отчётность и взносы', expertCount: 7 },
-  { code: 'registration', title: 'Регистрационные действия', expertCount: 5 },
-  { code: 'other', title: 'Прочее', expertCount: 9 },
+  { code: 'tax_audits', title: 'Налоговые проверки' },
+  { code: 'tax_authority_interaction', title: 'Взаимодействие с налоговой' },
+  { code: 'enforcement', title: 'Принудительные меры и взыскание' },
+  { code: 'main_taxes', title: 'Основные налоги' },
+  { code: 'special_regimes', title: 'Спецрежимы' },
+  { code: 'property_taxes', title: 'Имущественные налоги' },
+  { code: 'resource_taxes', title: 'Ресурсные налоги и акцизы' },
+  { code: 'reporting', title: 'Отчётность и взносы' },
+  { code: 'registration', title: 'Регистрационные действия' },
+  { code: 'other', title: 'Прочее' },
 ] as const
+
+/** Number-free tile subtitle until real per-topic expert counts exist. */
+export const TOPIC_SUBTITLE = 'эксперты в теме'
 
 /**
  * Section 4 — process steps. The ДОП principles are woven into the steps as
