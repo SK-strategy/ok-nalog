@@ -77,9 +77,14 @@ export function Experts() {
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-3">
+    <div
+      className="flex flex-col items-start gap-0.5 sm:flex-row sm:items-baseline sm:justify-between
+        sm:gap-3"
+    >
       <dt className="text-hint shrink-0 text-xs">{label}</dt>
-      <dd className="text-foreground text-right text-[13px] leading-snug font-medium">{value}</dd>
+      <dd className="text-foreground text-left text-[13px] leading-snug font-medium sm:text-right">
+        {value}
+      </dd>
     </div>
   )
 }
