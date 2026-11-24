@@ -37,12 +37,22 @@ const ICONS: Record<string, LucideIcon> = {
   other: Ellipsis,
 }
 
-const VISIBLE_COUNT = 8
+const VISIBLE_COUNT = 6
+
+/** тема / темы / тем */
+function pluralTopics(n: number): string {
+  const mod100 = n % 100
+  const mod10 = n % 10
+  if (mod100 >= 11 && mod100 <= 14) return 'тем'
+  if (mod10 === 1) return 'тема'
+  if (mod10 >= 2 && mod10 <= 4) return 'темы'
+  return 'тем'
+}
 
 /**
  * Section 3 — topics catalog. Client island: selection lives in the URL
- * (?topic=code), eight tiles visible, the rest unfold behind "Все темы (N)".
- * The CTA below follows the selection and carries the topic to /orders.
+ * (?topic=code), six tiles visible, the rest unfold behind "Ещё N темы".
+ * The CTA below follows the selection and carries the topic to /orders/new.
  */
 export function Situations() {
   const router = useRouter()
@@ -99,7 +109,9 @@ export function Situations() {
 
       <div className="mt-4 flex justify-center">
         <Button variant="ghost" onClick={() => setExpanded((v) => !v)}>
-          {expanded ? 'Свернуть' : `Все темы (${TOPICS.length})`}
+          {expanded
+            ? 'Свернуть'
+            : `Ещё ${TOPICS.length - VISIBLE_COUNT} ${pluralTopics(TOPICS.length - VISIBLE_COUNT)}`}
         </Button>
       </div>
 
