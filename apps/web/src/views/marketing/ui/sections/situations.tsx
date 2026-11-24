@@ -73,7 +73,7 @@ export function Situations() {
         Тематики
       </h2>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {visible.map((topic) => {
           const Icon = ICONS[topic.code] ?? Ellipsis
           const isSelected = topic.code === selectedCode
