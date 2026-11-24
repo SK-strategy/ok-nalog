@@ -235,16 +235,6 @@ export const PRIVACY = [
   },
 ] as const
 
-/**
- * Section 11 — for experts. Closed section: no public link, no form, no
- * mailto. The closedness is the quality signal, not a barrier.
- */
-export const FOR_EXPERTS = {
-  badge: 'Закрытый раздел',
-  title: 'Вы из системы? Здесь ваша экспертиза стоит дорого.',
-  body: 'Попасть сюда можно только по рекомендации действующих экспертов платформы. Публичной ссылки нет.',
-} as const
-
 /** Section 13 — final CTA (brief §4). */
 export const FINAL_CTA = {
   title: 'Загрузите документ — разберёмся.',
