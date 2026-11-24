@@ -4,6 +4,7 @@ import { DopPrinciples } from './sections/dop-principles'
 import { Experts } from './sections/experts'
 import { Founder } from './sections/founder'
 import { Hero } from './sections/hero'
+import { Privacy } from './sections/privacy'
 import { ProofStrip } from './sections/proof-strip'
 import { Situations } from './sections/situations'
 import { Steps } from './sections/steps'
@@ -25,6 +26,7 @@ export function MarketingPage() {
       <Founder />
       <Comparison />
       <DopPrinciples />
+      <Privacy />
     </main>
   )
 }
