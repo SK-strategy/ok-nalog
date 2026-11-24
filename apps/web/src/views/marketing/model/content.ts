@@ -22,3 +22,22 @@ export const PROOF = [
   { value: '24 часа', label: 'на ответ эксперта' },
   { value: 'Шифрование', label: 'файл шифруется сразу при загрузке' },
 ] as const
+
+/**
+ * Section 3 — topics catalog. Codes/titles mirror the real nomenclature in
+ * backend/convex/convex/seedData.ts (CATEGORIES_SEED); keep in sync manually
+ * until the landing reads it from the backend.
+ * TODO: replace expertCount with real per-topic expert counts.
+ */
+export const TOPICS = [
+  { code: 'tax_audits', title: 'Налоговые проверки', expertCount: 14 },
+  { code: 'tax_authority_interaction', title: 'Взаимодействие с налоговой', expertCount: 11 },
+  { code: 'enforcement', title: 'Принудительные меры и взыскание', expertCount: 8 },
+  { code: 'main_taxes', title: 'Основные налоги', expertCount: 12 },
+  { code: 'special_regimes', title: 'Спецрежимы', expertCount: 6 },
+  { code: 'property_taxes', title: 'Имущественные налоги', expertCount: 4 },
+  { code: 'resource_taxes', title: 'Ресурсные налоги и акцизы', expertCount: 3 },
+  { code: 'reporting', title: 'Отчётность и взносы', expertCount: 7 },
+  { code: 'registration', title: 'Регистрационные действия', expertCount: 5 },
+  { code: 'other', title: 'Прочее', expertCount: 9 },
+] as const

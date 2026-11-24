@@ -1,5 +1,6 @@
 import { Hero } from './sections/hero'
 import { ProofStrip } from './sections/proof-strip'
+import { Situations } from './sections/situations'
 
 /**
  * Landing composition. Server component: every section is RSC except the
@@ -11,6 +12,7 @@ export function MarketingPage() {
     <main className="mx-auto flex max-w-5xl flex-col gap-16 px-4 py-12 sm:px-6 sm:py-16">
       <Hero />
       <ProofStrip />
+      <Situations />
     </main>
   )
 }
