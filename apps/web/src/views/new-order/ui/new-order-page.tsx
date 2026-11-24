@@ -14,11 +14,13 @@ const isClientType = (v: string | null): v is ClientType =>
 
 /**
  * /orders/new — new question form. `?categoryId=X` prefills (entered via a
- * specific category tile); no `?categoryId` restores the saved draft.
+ * specific category tile); `?topic=code` prefills by seed code (entered from
+ * the landing catalog); neither restores the saved draft.
  */
 export function NewOrderPage() {
   const sp = useSearchParams()
   const initialCategoryId = (sp.get('categoryId') as Id<'categories'> | null) ?? undefined
+  const topic = sp.get('topic') ?? undefined
   const ctParam = sp.get('clientType')
   const clientType = isClientType(ctParam) ? ctParam : undefined
 
@@ -28,7 +30,11 @@ export function NewOrderPage() {
         Новое обращение
       </h1>
       <AuthGate>
-        <FormShell initialCategoryId={initialCategoryId} clientType={clientType} />
+        <FormShell
+          initialCategoryId={initialCategoryId}
+          initialCategoryCode={topic}
+          clientType={clientType}
+        />
       </AuthGate>
     </main>
   )
@@ -36,11 +42,13 @@ export function NewOrderPage() {
 
 function FormShell({
   initialCategoryId,
+  initialCategoryCode,
   clientType,
 }: {
   initialCategoryId?: Id<'categories'>
+  initialCategoryCode?: string
   clientType?: ClientType
 }) {
-  const form = useNewQuestionForm({ initialCategoryId, clientType })
+  const form = useNewQuestionForm({ initialCategoryId, initialCategoryCode, clientType })
   return <NewQuestionForm form={form} clientType={clientType} />
 }
