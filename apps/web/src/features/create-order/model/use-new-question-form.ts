@@ -74,9 +74,13 @@ export interface NewQuestionFormController {
  */
 export function useNewQuestionForm({
   initialCategoryId,
+  initialCategoryCode,
   clientType,
 }: {
   initialCategoryId?: Id<'categories'>
+  /** Seed `code` of a category (e.g. from the landing's ?topic=) — resolved
+   *  to the Convex id once the categories list loads. */
+  initialCategoryCode?: string
   clientType?: ClientType
 }): NewQuestionFormController {
   const router = useRouter()
@@ -101,6 +105,15 @@ export function useNewQuestionForm({
     () => (categoryId ? categories?.find((c) => c._id === categoryId) : undefined),
     [categories, categoryId],
   )
+
+  // Resolve ?topic=<code> → categoryId. Landing topics carry the seed code,
+  // not the Convex id, so the mapping happens here once the list is in.
+  useEffect(() => {
+    if (categoryId !== undefined || initialCategoryCode === undefined) return
+    const match = categories?.find((c) => c.code === initialCategoryCode)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (match) setCategoryIdState(match._id)
+  }, [categories, categoryId, initialCategoryCode])
 
   const tags = useQuery(
     api.tags.listByCategoryAndType,
@@ -153,6 +166,8 @@ export function useNewQuestionForm({
     if (draft === undefined) return
     hydratedRef.current = true
     if (initialCategoryId !== undefined) return
+    // An explicit topic from the landing beats the saved draft as well.
+    if (initialCategoryCode !== undefined) return
     if (!draft) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDescriptionState(draft.description)
@@ -162,7 +177,7 @@ export function useNewQuestionForm({
     if (draft.attachmentIds.length > 0) {
       void hydrateFiles(draft.attachmentIds).then(setFiles)
     }
-  }, [draft, initialCategoryId, hydrateFiles])
+  }, [draft, initialCategoryId, initialCategoryCode, hydrateFiles])
 
   const { upload, uploading, error: uploadErr } = useUpload()
 

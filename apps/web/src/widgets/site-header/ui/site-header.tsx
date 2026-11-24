@@ -12,6 +12,8 @@ import { useSession } from '~/entities/session'
 import { cn } from '~/shared/lib'
 import { UserAvatar } from '~/shared/ui/user-avatar'
 
+import { LandingBurger, LandingNav } from './landing-nav'
+
 /**
  * Site-wide header. Sticky at the top of every page.
  *
@@ -28,6 +30,10 @@ import { UserAvatar } from '~/shared/ui/user-avatar'
  * the dashboard's "Стать экспертом" CTA is the proper entry point for new
  * applicants. Showing a "cabinet" link to someone without a cabinet is
  * misleading.
+ *
+ * On the landing (pathname === '/') the header swaps to marketing
+ * navigation: section anchors + «Загрузить документ» CTA, burger on mobile.
+ * Product routes keep the original behaviour untouched.
  */
 export function SiteHeader() {
   const { me } = useSession()
@@ -43,16 +49,26 @@ export function SiteHeader() {
   // on the current URL so the header always reflects where the user is.
   const currentMode: HomeMode = pathname.startsWith('/executor') ? 'executor' : 'customer'
 
+  // Landing gets its own header; every other route keeps the product one.
+  const isLanding = pathname === '/'
+
   return (
     <header className="border-separator bg-background sticky top-0 z-30 border-b">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
-        <Link href="/" className="text-foreground text-base font-bold tracking-tight">
+        <Link
+          href="/"
+          className="text-foreground text-base font-bold tracking-tight whitespace-nowrap"
+        >
           Налоговый помощник
         </Link>
 
-        {/* Desktop: explicit links + user + sign-out */}
-        <nav className="hidden items-center gap-5 text-sm sm:flex">
-          {me ? (
+        {/* Desktop: explicit links + user + sign-out. On the landing the
+            anchor nav is wider, so it only fits from lg — below that the
+            burger takes over. Product routes keep the original sm split. */}
+        <nav className={cn('hidden items-center gap-5 text-sm', isLanding ? 'lg:flex' : 'sm:flex')}>
+          {isLanding ? (
+            <LandingNav isAuthed={!!me} />
+          ) : me ? (
             <>
               <NavLink
                 href="/orders"
@@ -80,9 +96,11 @@ export function SiteHeader() {
           )}
         </nav>
 
-        {/* Mobile: single combined dropdown */}
-        <div className="sm:hidden">
-          {me ? (
+        {/* Mobile: single combined dropdown (burger up to lg on landing) */}
+        <div className={isLanding ? 'lg:hidden' : 'sm:hidden'}>
+          {isLanding ? (
+            <LandingBurger isAuthed={!!me} />
+          ) : me ? (
             <MobileMenu current={currentMode} allowed={allowed} userName={me.user.name} />
           ) : (
             <LoginButton />
