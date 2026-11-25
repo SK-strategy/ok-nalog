@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 import { STEPS } from '../../model/content'
 
 /**
@@ -18,6 +20,14 @@ export function Steps() {
             </div>
             <h3 className="text-foreground text-base leading-tight font-bold">{step.action}</h3>
             <p className="text-text-soft text-sm leading-relaxed">{step.body}</p>
+            {'link' in step && (
+              <Link
+                href={step.link.href}
+                className="text-primary text-sm font-semibold underline-offset-4 hover:underline"
+              >
+                {step.link.label}
+              </Link>
+            )}
             <span className="text-primary mt-auto text-[12px] font-semibold">{step.principle}</span>
           </li>
         ))}

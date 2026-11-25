@@ -45,7 +45,7 @@ export function Experts() {
                     Досье {expert.id}
                   </div>
                   <div className="text-foreground mt-0.5 text-sm font-bold">
-                    Эксперт №{expert.id}
+                    Эксперт №{expert.id} · {expert.name}
                   </div>
                 </div>
               </div>
