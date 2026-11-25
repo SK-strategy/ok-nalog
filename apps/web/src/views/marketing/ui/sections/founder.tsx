@@ -1,9 +1,8 @@
 import { FOUNDER } from '../../model/content'
 
 /**
- * Section 7 — founder. One column for now: name, title, facts, quote.
- * The grid below is the ready two-column skeleton — when the portrait
- * arrives, drop it into the first cell and the layout is done (brief §4).
+ * Section 7 — founder. Two columns from sm: portrait on the left,
+ * card with name, title, facts and quote on the right (brief §4).
  */
 export function Founder() {
   return (
@@ -12,8 +11,13 @@ export function Founder() {
         Основатель
       </h2>
       <div className="grid gap-6 sm:grid-cols-[auto_1fr] sm:items-center">
-        {/* Портрет слева — когда появится фото основателя. */}
-        <div className="bg-card rounded-2xl border p-6 sm:col-span-full">
+        {/* eslint-disable-next-line @next/next/no-img-element -- локальный портрет из public */}
+        <img
+          src="/founder.jpg"
+          alt="Константин Персиянов, основатель сервиса"
+          className="mx-auto w-full max-w-64 rounded-2xl border object-cover sm:mx-0"
+        />
+        <div className="bg-card rounded-2xl border p-6">
           <div className="text-foreground text-lg font-bold tracking-tight">{FOUNDER.name}</div>
           <p className="text-text-soft mt-1 text-sm leading-relaxed">{FOUNDER.title}</p>
           <p className="text-hint mt-2 text-[13px]">{FOUNDER.facts}</p>
