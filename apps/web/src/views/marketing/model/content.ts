@@ -15,11 +15,11 @@ export const HERO = {
   ctaSecondary: 'Как это работает',
 } as const
 
-/** Section 2 — proof strip (brief §4). Numbers must not change (24 ч — §14). */
+/** Section 2 — proof strip (brief §4). Срок сведён с /tarify: К1 — до 6 ч, К2 — до 24 ч, К3 — до 36 ч. */
 export const PROOF = [
   { value: '300 лет', label: 'в контрольных подразделениях ФНС' },
   { value: '15 лет', label: 'основатель в системе' },
-  { value: '24 часа', label: 'на ответ эксперта' },
+  { value: 'от 6 часов', label: 'срок ответа — зависит от тарифа' },
   { value: 'Шифрование', label: 'файл шифруется сразу при загрузке' },
 ] as const
 
@@ -48,8 +48,8 @@ export const TOPIC_SUBTITLE = 'эксперты в теме'
 
 /**
  * Section 4 — process steps. The ДОП principles are woven into the steps as
- * explanation, not slogans (brief §4). Step 3 — 24 ч (§14); step 2 mentions
- * topic-based routing.
+ * explanation, not slogans (brief §4). Step 3 — срок по тарифам (/tarify);
+ * step 2 mentions topic-based routing.
  */
 export const STEPS = [
   {
@@ -63,9 +63,10 @@ export const STEPS = [
     principle: 'достоверно',
   },
   {
-    action: 'Ответ в срок',
-    body: 'Не более 24 часов.',
+    action: 'Срок ответа',
+    body: 'от 6 до 36 часов — зависит от тарифа.',
     principle: 'оперативно',
+    link: { href: '/tarify', label: 'Тарифы и сроки' },
   },
   {
     action: 'Разбор строго по вашим документам',
@@ -103,62 +104,67 @@ export const DELIVERABLES = [
  * Section 6 — experts. Anonymous dossiers: role, function, tenure, scale —
  * never the person. Mixed roster of active and former officers, so the copy
  * says "работают или работали" and avoids pushing «экс-».
- * TODO: заменить на реальные профили.
  */
 export const EXPERTS_INTRO = {
   title: 'Наши эксперты',
   lead: 'Они не изучали систему по учебникам. Они её строили.',
-  note: 'Личность не раскрываем. Раскрываем, где сидели и что делали.',
 } as const
 
+// TODO: заменить на реальные профили — цифры сгенерированы.
 export const EXPERTS = [
   {
     id: '01',
-    position: 'Начальник инспекции',
-    func: 'Выездные проверки',
-    experience: '15 лет в ВНП',
-    scale: 'начисления на 3 млрд ₽',
+    name: 'Андрей',
+    position: 'Заместитель начальника отдела выездных проверок',
+    func: 'ВНП и доначисления',
+    experience: '16 лет',
+    scale: 'свыше 40 проверок, начисления от 300 млн ₽',
     status: 'consulting',
   },
   {
     id: '02',
-    position: 'Заместитель начальника инспекции',
-    func: 'Предпроверочный анализ',
-    experience: '10 лет в ППА',
-    scale: 'более 200 предпроверочных анализов',
+    name: 'Марина',
+    position: 'Начальник отдела камеральных проверок',
+    func: 'Камеральные, НДС',
+    experience: '14 лет',
+    scale: 'более 3 000 камеральных',
     status: 'active',
   },
   {
     id: '03',
-    position: 'Главный методолог управления',
-    func: 'Методология',
-    experience: '20 лет в методологии',
-    scale: 'методические письма для инспекций региона',
+    name: 'Сергей',
+    position: 'Главный государственный налоговый инспектор',
+    func: 'Предпроверочный анализ',
+    experience: '12 лет',
+    scale: 'более 200 ППА, треть переросла в выездные',
     status: 'consulting',
   },
   {
     id: '04',
-    position: 'Начальник отдела камеральных проверок',
-    func: 'Камеральные проверки',
-    experience: '12 лет в камеральном контроле',
-    scale: 'тысячи камеральных проверок в год',
-    status: 'active',
-  },
-  {
-    id: '05',
-    position: 'Начальник отдела урегулирования споров',
-    func: 'Споры',
-    experience: '8 лет в спорах',
-    scale: 'более 150 дел в досудебном порядке',
+    name: 'Ольга',
+    position: 'Заместитель начальника отдела методологии',
+    func: 'Методология контроля, разъяснения',
+    experience: '18 лет',
+    scale: 'внутренние методики и ответы на запросы',
     status: 'consulting',
   },
   {
-    id: '06',
-    position: 'Заместитель начальника отдела',
-    func: 'Начисления',
-    experience: '11 лет в начислениях',
-    scale: 'категории: НДС, прибыль, НДФЛ',
+    id: '05',
+    name: 'Дмитрий',
+    position: 'Старший государственный налоговый инспектор',
+    func: 'Споры и жалобы, досудебное урегулирование',
+    experience: '11 лет',
+    scale: 'свыше 300 жалоб',
     status: 'active',
+  },
+  {
+    id: '06',
+    name: 'Игорь',
+    position: 'Начальник отдела урегулирования задолженности',
+    func: 'Блокировка счёта, взыскание, рассрочка',
+    experience: '10 лет',
+    scale: 'более 900 решений по обеспечительным мерам',
+    status: 'consulting',
   },
 ] as const
 
@@ -213,7 +219,7 @@ export const COMPARISON = {
 /** Section 9 — ДОП principles, one line each (brief §4). */
 export const PRINCIPLES = [
   { word: 'Достоверно', line: '300 лет в контрольных подразделениях ФНС.' },
-  { word: 'Оперативно', line: 'Ответ не более чем за 24 часа.' },
+  { word: 'Оперативно', line: 'Ответ от 6 до 36 часов — срок по тарифу.' },
   { word: 'Приватно', line: 'Файл шифруется сразу при загрузке.' },
   { word: 'Персонализировано', line: 'Разбор строго по вашим документам.' },
   { word: 'Предиктивно', line: 'Какое решение будет принято и как к нему готовиться.' },
@@ -270,7 +276,8 @@ export const FAQ = [
   },
   {
     q: 'Успеете ли вы к моему сроку?',
-    a: 'Ответ эксперта — не более чем за 24 часа.',
+    a: 'Срок зависит от тарифа: от 6 до 36 часов. Тарифы и сроки — в разделе «Тарифы».',
+    link: { href: '/tarify', label: 'Тарифы и сроки' },
   },
   {
     q: 'А если не поможет?',

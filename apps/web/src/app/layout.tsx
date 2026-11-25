@@ -4,6 +4,7 @@ import { env } from '~/env'
 import { cn } from '@tax-assistant/ui'
 
 import { Providers } from '~/app/providers'
+import { CookieBanner } from '~/widgets/cookie-banner'
 import { SiteHeader } from '~/widgets/site-header'
 
 import '~/app/styles.css'
@@ -24,19 +25,18 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#17212b' },
-  ],
+  themeColor: '#ffffff',
 }
 
 export default function RootLayout(props: { children: React.ReactNode }) {
   return (
-    <html lang="ru" suppressHydrationWarning>
+    // Theme is forced to light: no runtime switching (see feat/landing-final).
+    <html lang="ru" className="light" suppressHydrationWarning>
       <body className={cn('bg-background text-foreground min-h-screen font-sans antialiased')}>
         <Providers convexUrl={env.CONVEX_URL} convexSiteUrl={env.CONVEX_SITE_URL}>
           <SiteHeader />
           {props.children}
+          <CookieBanner />
         </Providers>
       </body>
     </html>

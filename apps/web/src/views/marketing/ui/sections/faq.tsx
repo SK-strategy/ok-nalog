@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { ChevronDown } from 'lucide-react'
 
 import { cn } from '~/shared/lib'
@@ -48,6 +49,15 @@ export function Faq() {
               {isOpen && (
                 <div id={panelId} role="region" aria-labelledby={buttonId} className="px-5 pb-4">
                   <p className="text-text-soft text-sm leading-relaxed">{item.a}</p>
+                  {'link' in item && (
+                    <Link
+                      href={item.link.href}
+                      className="text-primary mt-2 inline-block text-sm font-semibold
+                        underline-offset-4 hover:underline"
+                    >
+                      {item.link.label}
+                    </Link>
+                  )}
                 </div>
               )}
             </div>
