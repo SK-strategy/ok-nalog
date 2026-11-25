@@ -19,7 +19,8 @@ export function SiteFooter() {
     <footer className="border-separator border-t">
       <div className="mx-auto grid max-w-5xl gap-8 px-4 py-10 sm:grid-cols-3 sm:px-6">
         <div className="flex flex-col gap-2">
-          <span className="text-foreground text-sm font-bold">ОК, налог.нет</span>
+          {/* eslint-disable-next-line @next/next/no-img-element -- локальный SVG-логотип */}
+          <img src="/logo.svg" alt="ОК, налог.нет" className="h-6 w-auto self-start" />
           <p className="text-text-soft text-[13px] leading-relaxed">
             Платформа налоговой экспертизы. Эксперты контрольных подразделений ФНС.
           </p>

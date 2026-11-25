@@ -55,11 +55,9 @@ export function SiteHeader() {
   return (
     <header className="border-separator bg-background sticky top-0 z-30 border-b">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
-        <Link
-          href="/"
-          className="text-foreground text-base font-bold tracking-tight whitespace-nowrap"
-        >
-          Налоговый помощник
+        <Link href="/" aria-label="ОК, налог.нет" className="shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element -- локальный SVG-логотип */}
+          <img src="/logo.svg" alt="ОК, налог.нет" className="h-7 w-auto" />
         </Link>
 
         {/* Desktop: explicit links + user + sign-out. On the landing the
