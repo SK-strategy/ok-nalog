@@ -4,6 +4,7 @@ import { env } from '~/env'
 import { cn } from '@tax-assistant/ui'
 
 import { Providers } from '~/app/providers'
+import { CookieBanner } from '~/widgets/cookie-banner'
 import { SiteHeader } from '~/widgets/site-header'
 
 import '~/app/styles.css'
@@ -35,6 +36,7 @@ export default function RootLayout(props: { children: React.ReactNode }) {
         <Providers convexUrl={env.CONVEX_URL} convexSiteUrl={env.CONVEX_SITE_URL}>
           <SiteHeader />
           {props.children}
+          <CookieBanner />
         </Providers>
       </body>
     </html>
