@@ -1,3 +1,5 @@
+import Image from 'next/image'
+
 import { FOUNDER } from '../../model/content'
 
 /**
@@ -11,12 +13,18 @@ export function Founder() {
         Основатель
       </h2>
       <div className="grid gap-6 sm:grid-cols-[auto_1fr] sm:items-center">
-        {/* eslint-disable-next-line @next/next/no-img-element -- локальный портрет из public */}
-        <img
-          src="/founder.jpg"
-          alt="Константин Персиянов, основатель сервиса"
-          className="mx-auto w-full max-w-64 rounded-2xl border object-cover sm:mx-0"
-        />
+        <div
+          className="relative mx-auto aspect-[4/5] w-full max-w-64 overflow-hidden rounded-2xl
+            border sm:mx-0"
+        >
+          <Image
+            src="/founder.jpg"
+            alt="Константин Персиянов, основатель сервиса"
+            fill
+            sizes="(min-width: 640px) 256px, 100vw"
+            className="object-cover object-top"
+          />
+        </div>
         <div className="bg-card rounded-2xl border p-6">
           <div className="text-foreground text-lg font-bold tracking-tight">{FOUNDER.name}</div>
           <p className="text-text-soft mt-1 text-sm leading-relaxed">{FOUNDER.title}</p>

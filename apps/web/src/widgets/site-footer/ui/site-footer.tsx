@@ -37,12 +37,12 @@ export function SiteFooter() {
           </span>
           <FooterLink href="/oferta">Пользовательское соглашение</FooterLink>
           <FooterLink href="/politika">Политика конфиденциальности</FooterLink>
-          <FooterLink href="/politika-pd">Политика обработки персональных данных</FooterLink>
           <FooterLink href="/soglasie">Согласие на обработку персональных данных</FooterLink>
+          <FooterLink href="/politika-pd">Политика обработки ПД</FooterLink>
           <FooterLink href="/oplata">Правила оплаты и возврата</FooterLink>
-          <FooterLink href="/tarify">Тарифы и сроки ответов</FooterLink>
+          <FooterLink href="/tarify">Тарифы и сроки</FooterLink>
           <FooterLink href="/cookie">Уведомление о cookie</FooterLink>
-          <FooterLink href="/dogovor-ekspertov">Договор и правила для экспертов</FooterLink>
+          <FooterLink href="/dogovor-ekspertov">Договор для экспертов</FooterLink>
         </nav>
 
         <div className="flex flex-col gap-3">
