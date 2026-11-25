@@ -91,16 +91,22 @@ export function Situations() {
                   : 'bg-card hover:bg-secondary/60 border-transparent',
               )}
             >
-              <div
-                className="bg-primary-soft text-primary flex size-10 items-center justify-center
-                  rounded-[10px]"
-              >
-                <Icon className="size-5" strokeWidth={1.8} />
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div
+                  className="bg-primary-soft text-primary flex size-8 shrink-0 items-center
+                    justify-center rounded-[10px] sm:size-10"
+                >
+                  <Icon className="size-4 sm:size-5" strokeWidth={1.8} />
+                </div>
+                <div
+                  className="text-foreground min-w-0 text-[13px] leading-tight font-bold break-words
+                    hyphens-auto sm:text-sm"
+                  lang="ru"
+                >
+                  {topic.title}
+                </div>
               </div>
-              <div>
-                <div className="text-foreground text-sm leading-tight font-bold">{topic.title}</div>
-                <div className="text-text-soft mt-1 text-sm">{TOPIC_SUBTITLE}</div>
-              </div>
+              <div className="text-text-soft mt-auto text-sm">{TOPIC_SUBTITLE}</div>
             </button>
           )
         })}

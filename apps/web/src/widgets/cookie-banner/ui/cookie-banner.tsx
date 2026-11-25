@@ -46,36 +46,26 @@ export function CookieBanner() {
       className="bg-card border-separator fixed inset-x-0 bottom-0 z-50 border-t"
     >
       <div
-        className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center
+        className="mx-auto flex max-w-5xl flex-col gap-1.5 px-4 py-2 sm:flex-row sm:items-center
           sm:justify-between sm:gap-6 sm:px-6"
       >
-        <p className="text-text-soft text-[13px] leading-relaxed">
-          Мы используем cookie и локальное хранилище: необходимые — для входа и оплаты,
-          необязательные — для аналитики и улучшения сервиса. Подробнее:{' '}
+        <p className="text-text-soft text-[12px] leading-snug">
+          Мы используем cookie: необходимые — для входа и оплаты, остальные — для аналитики.{' '}
           <Link
             href="/cookie"
             className="text-foreground focus-visible:ring-ring/50 rounded-sm underline
               underline-offset-2 outline-none focus-visible:ring-[3px]"
           >
-            уведомление о cookie
-          </Link>{' '}
-          и{' '}
-          <Link
-            href="/politika-pd"
-            className="text-foreground focus-visible:ring-ring/50 rounded-sm underline
-              underline-offset-2 outline-none focus-visible:ring-[3px]"
-          >
-            политика обработки персональных данных
+            Подробнее
           </Link>
-          .
         </p>
         <div className="flex shrink-0 gap-2">
           <button
             type="button"
             onClick={() => choose('necessary')}
             className="text-text-soft hover:text-foreground border-separator-strong
-              focus-visible:ring-ring/50 rounded-lg border px-4 py-2 text-[13px] font-medium
-              transition-colors outline-none focus-visible:ring-[3px]"
+              focus-visible:ring-ring/50 rounded-lg border px-3 py-1.5 text-[12px] font-medium
+              whitespace-nowrap transition-colors outline-none focus-visible:ring-[3px]"
           >
             Только необходимые
           </button>
@@ -83,8 +73,8 @@ export function CookieBanner() {
             type="button"
             onClick={() => choose('all')}
             className="bg-primary text-primary-foreground hover:bg-primary/90
-              focus-visible:ring-ring/50 rounded-lg px-4 py-2 text-[13px] font-medium
-              transition-colors outline-none focus-visible:ring-[3px]"
+              focus-visible:ring-ring/50 rounded-lg px-3 py-1.5 text-[12px] font-medium
+              whitespace-nowrap transition-colors outline-none focus-visible:ring-[3px]"
           >
             Принять
           </button>

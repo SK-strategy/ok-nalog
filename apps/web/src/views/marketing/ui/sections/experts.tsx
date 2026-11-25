@@ -1,7 +1,6 @@
-import { EXPERT_STATUS_LABEL, EXPERTS, EXPERTS_INTRO } from '../../model/content'
+import { User } from 'lucide-react'
 
-// SVG turbulence noise, no colors involved — texture for the blurred avatar.
-const NOISE_BG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='96' height='96' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E")`
+import { EXPERT_STATUS_LABEL, EXPERTS, EXPERTS_INTRO } from '../../model/content'
 
 /**
  * Section 6 — experts. Anonymous dossiers (brief §2 + уточнения заказчика):
@@ -17,10 +16,6 @@ export function Experts() {
       <p className="text-text-soft mx-auto mt-3 max-w-2xl text-center text-base leading-relaxed">
         {EXPERTS_INTRO.lead} Работают или работали в контрольных подразделениях ФНС.
       </p>
-      <div className="bg-secondary mx-auto mt-6 max-w-2xl rounded-2xl px-5 py-4 text-center">
-        <p className="text-text-soft text-sm leading-relaxed">{EXPERTS_INTRO.note}</p>
-      </div>
-
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {EXPERTS.map((expert) => (
           <article
@@ -29,16 +24,11 @@ export function Experts() {
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="relative size-14 shrink-0 overflow-hidden rounded-2xl">
-                  <div
-                    className="from-primary/70 via-primary/30 to-primary-soft absolute -inset-2
-                      bg-gradient-to-br blur-[7px] transition-all duration-300
-                      group-hover:blur-[3px]"
-                  />
-                  <div
-                    className="absolute inset-0 opacity-40"
-                    style={{ backgroundImage: NOISE_BG }}
-                  />
+                <div
+                  className="bg-secondary text-hint flex size-14 shrink-0 items-center
+                    justify-center rounded-2xl"
+                >
+                  <User className="size-7" strokeWidth={1.6} aria-hidden />
                 </div>
                 <div className="whitespace-nowrap">
                   <div className="text-hint font-mono text-[11px] tracking-[0.08em] uppercase">
