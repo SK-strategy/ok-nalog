@@ -15,11 +15,11 @@ export const HERO = {
   ctaSecondary: 'Как это работает',
 } as const
 
-/** Section 2 — proof strip (brief §4). Numbers must not change (24 ч — §14). */
+/** Section 2 — proof strip (brief §4). Срок сведён с /tarify: К1 — до 6 ч, К2 — до 24 ч, К3 — до 36 ч. */
 export const PROOF = [
   { value: '300 лет', label: 'в контрольных подразделениях ФНС' },
   { value: '15 лет', label: 'основатель в системе' },
-  { value: '24 часа', label: 'на ответ эксперта' },
+  { value: '6–36 часов', label: 'срок ответа — зависит от тарифа' },
   { value: 'Шифрование', label: 'файл шифруется сразу при загрузке' },
 ] as const
 
@@ -48,8 +48,8 @@ export const TOPIC_SUBTITLE = 'эксперты в теме'
 
 /**
  * Section 4 — process steps. The ДОП principles are woven into the steps as
- * explanation, not slogans (brief §4). Step 3 — 24 ч (§14); step 2 mentions
- * topic-based routing.
+ * explanation, not slogans (brief §4). Step 3 — срок по тарифам (/tarify);
+ * step 2 mentions topic-based routing.
  */
 export const STEPS = [
   {
@@ -64,7 +64,7 @@ export const STEPS = [
   },
   {
     action: 'Ответ в срок',
-    body: 'Не более 24 часов.',
+    body: 'От 6 до 36 часов — срок зависит от тарифа.',
     principle: 'оперативно',
   },
   {
@@ -213,7 +213,7 @@ export const COMPARISON = {
 /** Section 9 — ДОП principles, one line each (brief §4). */
 export const PRINCIPLES = [
   { word: 'Достоверно', line: '300 лет в контрольных подразделениях ФНС.' },
-  { word: 'Оперативно', line: 'Ответ не более чем за 24 часа.' },
+  { word: 'Оперативно', line: 'Ответ от 6 до 36 часов — срок по тарифу.' },
   { word: 'Приватно', line: 'Файл шифруется сразу при загрузке.' },
   { word: 'Персонализировано', line: 'Разбор строго по вашим документам.' },
   { word: 'Предиктивно', line: 'Какое решение будет принято и как к нему готовиться.' },
@@ -270,7 +270,7 @@ export const FAQ = [
   },
   {
     q: 'Успеете ли вы к моему сроку?',
-    a: 'Ответ эксперта — не более чем за 24 часа.',
+    a: 'Ответ эксперта — от 6 до 36 часов, срок зависит от тарифа. Таблица сроков — в разделе «Тарифы и оплата».',
   },
   {
     q: 'А если не поможет?',
