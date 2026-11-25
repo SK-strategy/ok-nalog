@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 
 const STORAGE_KEY = 'cookie-consent'
@@ -13,6 +13,7 @@ type Consent = 'all' | 'necessary'
  */
 export function CookieBanner() {
   const [visible, setVisible] = useState(false)
+  const barRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     // Deferred so the check never runs as a synchronous setState in the effect
@@ -28,6 +29,23 @@ export function CookieBanner() {
     return () => window.clearTimeout(id)
   }, [])
 
+  // While the bar is visible it is position:fixed — reserve its height as
+  // body padding-bottom so it never overlaps page content. Restored on
+  // choice / unmount.
+  useEffect(() => {
+    if (!visible) return
+    const body = document.body
+    const apply = () => {
+      body.style.paddingBottom = `${barRef.current?.offsetHeight ?? 0}px`
+    }
+    apply()
+    window.addEventListener('resize', apply)
+    return () => {
+      window.removeEventListener('resize', apply)
+      body.style.paddingBottom = ''
+    }
+  }, [visible])
+
   if (!visible) return null
 
   const choose = (consent: Consent) => {
@@ -41,6 +59,7 @@ export function CookieBanner() {
 
   return (
     <div
+      ref={barRef}
       role="region"
       aria-label="Уведомление о cookie"
       className="bg-card border-separator fixed inset-x-0 bottom-0 z-50 border-t"

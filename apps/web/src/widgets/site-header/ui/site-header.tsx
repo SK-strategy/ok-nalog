@@ -57,7 +57,7 @@ export function SiteHeader() {
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
         <Link href="/" aria-label="ОК, налог.нет" className="shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element -- локальный SVG-логотип */}
-          <img src="/logo.svg" alt="ОК, налог.нет" className="h-7 w-auto" />
+          <img src="/logo.svg" alt="ОК, налог.нет" className="h-6 w-auto sm:h-7" />
         </Link>
 
         {/* Desktop: explicit links + user + sign-out. On the landing the

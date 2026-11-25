@@ -14,14 +14,14 @@ export function Founder() {
       </h2>
       <div className="grid gap-6 sm:grid-cols-[auto_1fr] sm:items-center">
         <div
-          className="relative mx-auto aspect-[4/5] w-full max-w-64 overflow-hidden rounded-2xl
-            border sm:mx-0"
+          className="relative mx-auto aspect-[4/5] w-full max-w-[260px] overflow-hidden rounded-2xl
+            border sm:mx-0 sm:w-64 sm:max-w-none"
         >
           <Image
             src="/founder.jpg"
             alt="Константин Персиянов, основатель сервиса"
             fill
-            sizes="(min-width: 640px) 256px, 100vw"
+            sizes="(min-width: 640px) 256px, 260px"
             className="object-cover object-top"
           />
         </div>
