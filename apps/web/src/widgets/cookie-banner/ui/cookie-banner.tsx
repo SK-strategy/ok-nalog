@@ -46,11 +46,12 @@ export function CookieBanner() {
       className="bg-card border-separator fixed inset-x-0 bottom-0 z-50 border-t"
     >
       <div
-        className="mx-auto flex max-w-5xl flex-col gap-1.5 px-4 py-2 sm:flex-row sm:items-center
+        className="mx-auto flex max-w-5xl flex-col gap-2 px-4 pt-2.5 sm:flex-row sm:items-center
           sm:justify-between sm:gap-6 sm:px-6"
+        style={{ paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}
       >
         <p className="text-text-soft text-[12px] leading-snug">
-          Мы используем cookie: необходимые — для входа и оплаты, остальные — для аналитики.{' '}
+          Мы используем cookie.{' '}
           <Link
             href="/cookie"
             className="text-foreground focus-visible:ring-ring/50 rounded-sm underline
