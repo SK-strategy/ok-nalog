@@ -1,0 +1,838 @@
+/* ============================================================
+   Landing — стиль из preview/style-preview.html (принято заказчиком).
+   Всё scoped под .mkt, чтобы не задеть продуктовые страницы.
+   Палитра переопределяет токены темы только внутри лендинга:
+   секции s7–s12 на Tailwind-классах подхватывают её автоматически.
+   ============================================================ */
+
+.mkt {
+  /* Переопределение токенов @tax-assistant/tailwind-config (только лендинг) */
+  --primary: #2b54e8;
+  --primary-soft: #edf1fe;
+  --foreground: #0b1220;
+  --text-soft: #5b6478;
+  --hint: #98a1b5;
+  --border: #e4e8f2;
+  --secondary: #f5f7fd;
+  --muted: #f5f7fd;
+  --shadow-accent: 0 10px 24px -10px rgba(43, 84, 232, 0.5);
+
+  /* Токены превью */
+  --mkt-accent: #2b54e8;
+  --mkt-accent-deep: #1c3aae;
+  --mkt-accent-soft: #edf1fe;
+  --mkt-ink: #0b1220;
+  --mkt-ink-soft: #5b6478;
+  --mkt-ink-muted: #98a1b5;
+  --mkt-surface: #f5f7fd;
+  --mkt-line: #e4e8f2;
+  --mkt-urgent: #d2400a;
+  --mkt-r-chip: 999px;
+  --mkt-r-btn: 14px;
+  --mkt-r-card: 24px;
+  --mkt-r-panel: 32px;
+  --mkt-shadow-card: 0 12px 32px -10px rgba(20, 32, 90, 0.1);
+  --mkt-shadow-lift: 0 22px 48px -16px rgba(20, 32, 90, 0.18);
+  --mkt-shadow-btn: 0 10px 24px -10px rgba(43, 84, 232, 0.5);
+  --mkt-shadow-btn-hover: 0 16px 32px -12px rgba(43, 84, 232, 0.6);
+  --mkt-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  color: var(--mkt-ink);
+}
+
+.mkt h1 {
+  font-size: clamp(26px, 4.6vw, 52px);
+  line-height: 1.06;
+  letter-spacing: -0.025em;
+  font-weight: 800;
+  text-wrap: balance;
+}
+.mkt h2 {
+  font-size: clamp(26px, 3.8vw, 44px);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  font-weight: 800;
+  text-wrap: balance;
+}
+.mkt h3 {
+  font-size: 19px;
+  line-height: 1.3;
+  font-weight: 700;
+  text-wrap: balance;
+}
+.mkt :focus-visible {
+  outline: 2px solid var(--mkt-accent-deep);
+  outline-offset: 3px;
+}
+
+/* --- Каркас секций --- */
+.mkt-sec {
+  padding-block: 64px;
+}
+@media (min-width: 768px) {
+  .mkt-sec {
+    padding-block: 96px;
+  }
+}
+@media (min-width: 1280px) {
+  .mkt-sec {
+    padding-block: 120px;
+  }
+}
+
+.mkt-sec--white {
+  background: #fff;
+}
+.mkt-sec--tint {
+  background: var(--mkt-surface);
+}
+
+.mkt-wrap {
+  width: 100%;
+  max-width: 1240px;
+  margin-inline: auto;
+  padding-inline: 20px;
+}
+@media (min-width: 768px) {
+  .mkt-wrap {
+    padding-inline: 32px;
+  }
+}
+@media (min-width: 1280px) {
+  .mkt-wrap {
+    padding-inline: 40px;
+  }
+}
+
+.mkt-mono {
+  font-family: var(--mkt-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mkt-ink-muted);
+}
+
+.mkt-sec-head {
+  margin-bottom: 40px;
+}
+.mkt-sec-head h2 {
+  margin-top: 12px;
+  max-width: 24ch;
+}
+.mkt-sec-head .mkt-lead {
+  margin-top: 16px;
+  font-size: 18px;
+  color: var(--mkt-ink-soft);
+  max-width: 56ch;
+}
+
+/* --- Кнопки --- */
+.mkt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 56px;
+  padding-inline: 30px;
+  border: 0;
+  border-radius: var(--mkt-r-btn);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform 180ms ease-out,
+    box-shadow 180ms ease-out,
+    background-color 180ms ease-out,
+    color 180ms ease-out;
+}
+.mkt-btn--primary {
+  color: #fff;
+  background: var(--mkt-accent);
+  box-shadow: var(--mkt-shadow-btn);
+}
+.mkt-btn--primary:hover {
+  background: var(--mkt-accent-deep);
+  transform: translateY(-2px);
+  box-shadow: var(--mkt-shadow-btn-hover);
+}
+.mkt-btn--primary:active {
+  transform: translateY(0);
+}
+.mkt-btn--secondary {
+  color: var(--mkt-ink);
+  background: var(--mkt-accent-soft);
+}
+.mkt-btn--secondary:hover {
+  background: #e0e7fd;
+  color: var(--mkt-accent-deep);
+}
+.mkt-btn--ghost {
+  height: 48px;
+  padding-inline: 24px;
+  font-size: 15px;
+  color: var(--mkt-accent);
+  background: var(--mkt-accent-soft);
+}
+.mkt-btn--ghost:hover {
+  background: #e0e7fd;
+  color: var(--mkt-accent-deep);
+}
+
+/* --- s1 · Hero --- */
+.mkt-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 48px;
+  align-items: center;
+}
+@media (min-width: 1024px) {
+  .mkt-hero {
+    grid-template-columns: minmax(0, 1.22fr) minmax(0, 0.78fr);
+    gap: 52px;
+  }
+}
+@media (min-width: 1280px) {
+  .mkt-hero {
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  }
+}
+
+.mkt-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  padding: 8px 16px 8px 12px;
+  border-radius: var(--mkt-r-chip);
+  background: var(--mkt-accent-soft);
+  font-family: var(--mkt-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mkt-accent-deep);
+}
+.mkt-eyebrow::before {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mkt-accent);
+}
+
+.mkt-hero h1 {
+  max-width: 100%;
+}
+.mkt-urgent {
+  color: var(--mkt-urgent);
+  white-space: nowrap;
+}
+
+.mkt-hero-lead {
+  margin-top: 24px;
+  max-width: 44ch;
+  font-size: 19px;
+  color: var(--mkt-ink-soft);
+}
+
+.mkt-hero-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 36px;
+}
+.mkt-hero-actions .mkt-btn {
+  width: 100%;
+}
+@media (min-width: 768px) {
+  .mkt-hero-actions {
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+  }
+  .mkt-hero-actions .mkt-btn {
+    width: auto;
+  }
+}
+
+.mkt-hero-trust {
+  margin-top: 24px;
+  font-size: 12px;
+}
+
+/* Скан требования — только ПК */
+.mkt-hero-art {
+  display: none;
+  position: relative;
+  justify-self: center;
+  width: 100%;
+  max-width: 340px;
+  margin: 0;
+}
+@media (min-width: 1024px) {
+  .mkt-hero-art {
+    display: block;
+    justify-self: end;
+    max-width: 440px;
+  }
+}
+
+.mkt-art-plate {
+  position: relative;
+  border-radius: var(--mkt-r-panel);
+  overflow: hidden;
+  background: var(--mkt-surface);
+  box-shadow: var(--mkt-shadow-lift);
+}
+.mkt-art-plate img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Размытие названия юрлица; ИНН/КПП, адрес, номер и дата читаемы */
+.mkt-art-mask {
+  position: absolute;
+  left: 43.5%;
+  top: 6.4%;
+  width: 44.5%;
+  height: 5.2%;
+  z-index: 2;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  background: rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+
+.mkt-art-tag {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 2;
+  padding: 7px 14px;
+  border-radius: var(--mkt-r-chip);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: var(--mkt-shadow-card);
+  font-family: var(--mkt-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mkt-accent-deep);
+}
+
+.mkt-art-stamp {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2;
+  padding: 8px 16px;
+  border-radius: var(--mkt-r-chip);
+  background: var(--mkt-ink);
+  font-family: var(--mkt-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+/* --- s2 · Полоса цифр --- */
+.mkt-proof {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--mkt-line);
+  border-radius: var(--mkt-r-panel);
+  overflow: hidden;
+  box-shadow: var(--mkt-shadow-card);
+}
+@media (min-width: 768px) {
+  .mkt-proof {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.mkt-proof-cell {
+  background: #fff;
+  padding: 28px 24px;
+}
+@media (min-width: 768px) {
+  .mkt-proof-cell {
+    padding: 36px 30px;
+  }
+}
+
+.mkt-proof-num {
+  display: block;
+  margin-bottom: 14px;
+  font-size: 11px;
+}
+.mkt-proof-value {
+  font-size: clamp(20px, 2.4vw, 28px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.mkt-proof-label {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--mkt-ink-soft);
+}
+
+/* --- s3 · Тематики --- */
+.mkt-topics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (min-width: 768px) {
+  .mkt-topics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+}
+
+.mkt-topic {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  height: 100%;
+  padding: 24px;
+  border: 0;
+  border-radius: var(--mkt-r-card);
+  background: var(--mkt-surface);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 180ms ease-out,
+    box-shadow 180ms ease-out,
+    background-color 180ms ease-out;
+}
+.mkt-topic:hover {
+  background: var(--mkt-accent-soft);
+  transform: translateY(-3px);
+  box-shadow: var(--mkt-shadow-card);
+}
+.mkt-topic[aria-pressed='true'] {
+  background: var(--mkt-accent-soft);
+  box-shadow: inset 0 0 0 2px var(--mkt-accent);
+}
+
+.mkt-topic-ico {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: #fff;
+  color: var(--mkt-accent);
+  box-shadow: var(--mkt-shadow-card);
+}
+.mkt-topic-title {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+.mkt-topic-sub {
+  margin-top: auto;
+  font-size: 14px;
+  color: var(--mkt-ink-soft);
+}
+
+.mkt-topics-more {
+  margin-top: 32px;
+  display: flex;
+  justify-content: center;
+}
+
+/* --- s4 · Как это работает --- */
+.mkt-rail {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mkt-step {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+  padding: 24px;
+  border-radius: var(--mkt-r-card);
+  background: #fff;
+  box-shadow: var(--mkt-shadow-card);
+  transition:
+    transform 180ms ease-out,
+    box-shadow 180ms ease-out;
+}
+@media (min-width: 768px) {
+  .mkt-step {
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 28px;
+    padding: 32px 36px;
+  }
+}
+.mkt-step:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--mkt-shadow-lift);
+}
+
+.mkt-step-num {
+  font-family: var(--mkt-font-mono);
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--mkt-accent);
+}
+@media (min-width: 768px) {
+  .mkt-step-num {
+    font-size: 40px;
+  }
+}
+
+.mkt-step-body h3 {
+  margin-bottom: 8px;
+}
+.mkt-step-body p {
+  font-size: 16px;
+  color: var(--mkt-ink-soft);
+}
+
+.mkt-principle {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 5px 12px;
+  border-radius: var(--mkt-r-chip);
+  background: var(--mkt-accent-soft);
+  font-family: var(--mkt-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mkt-accent-deep);
+}
+
+.mkt-step-link {
+  display: inline-block;
+  margin-top: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--mkt-accent);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: border-color 180ms ease-out;
+}
+.mkt-step-link:hover {
+  border-bottom-color: var(--mkt-accent);
+}
+
+/* --- s5 · Что вы получаете --- */
+.mkt-deliv {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+@media (min-width: 768px) {
+  .mkt-deliv {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.mkt-deliv-item {
+  padding: 32px;
+  border-radius: var(--mkt-r-card);
+  background: var(--mkt-surface);
+  transition:
+    background-color 180ms ease-out,
+    transform 180ms ease-out;
+}
+.mkt-deliv-item:hover {
+  background: var(--mkt-accent-soft);
+  transform: translateY(-2px);
+}
+
+.mkt-deliv-num {
+  display: block;
+  margin-bottom: 20px;
+  font-family: var(--mkt-font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--mkt-accent);
+}
+.mkt-deliv-item h3 {
+  margin-bottom: 10px;
+  font-size: 21px;
+  letter-spacing: -0.01em;
+}
+.mkt-deliv-item p {
+  font-size: 16px;
+  color: var(--mkt-ink-soft);
+}
+
+/* --- s6 · Наши эксперты --- */
+.mkt-experts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+@media (min-width: 768px) {
+  .mkt-experts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1024px) {
+  .mkt-experts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.mkt-expert {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 28px;
+  border-radius: var(--mkt-r-card);
+  background: #fff;
+  box-shadow: var(--mkt-shadow-card);
+  transition:
+    transform 180ms ease-out,
+    box-shadow 180ms ease-out;
+}
+.mkt-expert:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--mkt-shadow-lift);
+}
+
+.mkt-expert-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.mkt-expert-id {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.mkt-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--mkt-surface);
+  color: var(--mkt-ink-muted);
+}
+
+.mkt-dossier {
+  display: block;
+  font-size: 10px;
+}
+.mkt-expert-name {
+  display: block;
+  margin-top: 4px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.mkt-status {
+  flex: none;
+  padding: 6px 12px;
+  border-radius: var(--mkt-r-chip);
+  font-family: var(--mkt-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.mkt-status--active {
+  background: var(--mkt-accent);
+  color: #fff;
+}
+.mkt-status--consulting {
+  background: var(--mkt-surface);
+  color: var(--mkt-ink-soft);
+}
+
+.mkt-fields {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mkt-field {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+.mkt-field dt {
+  flex: none;
+  font-family: var(--mkt-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mkt-ink-muted);
+}
+.mkt-field dd {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 500;
+  text-align: right;
+  color: var(--mkt-ink);
+}
+@media (max-width: 479px) {
+  .mkt-field {
+    display: block;
+  }
+  .mkt-field dd {
+    margin-top: 3px;
+    text-align: left;
+  }
+}
+
+/* --- Футер (тёмный, из превью) --- */
+.mkt-footer {
+  background: var(--mkt-ink);
+  color: #fff;
+}
+
+.mkt-footer-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 40px;
+  padding-block: 56px;
+}
+@media (min-width: 768px) {
+  .mkt-footer-grid {
+    grid-template-columns: 1.2fr 1fr 1fr;
+    gap: 32px;
+  }
+}
+
+.mkt-footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.mkt-footer-logo {
+  display: block;
+  height: 26px;
+  width: auto;
+  margin-bottom: 8px;
+  filter: brightness(0) invert(1);
+}
+
+.mkt-footer-note {
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.68);
+}
+.mkt-footer-legal {
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.mkt-footer-heading {
+  margin-bottom: 4px;
+  font-family: var(--mkt-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.mkt-footer-link {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 14px;
+  text-decoration: none;
+  transition: color 180ms ease-out;
+}
+.mkt-footer-link:hover {
+  color: #fff;
+}
+
+.mkt-socials {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mkt-socials a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.75);
+  transition:
+    background-color 180ms ease-out,
+    color 180ms ease-out;
+}
+.mkt-socials a:hover {
+  background: var(--mkt-accent);
+  color: #fff;
+}
+
+.mkt-footer-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+.mkt-footer-bottom p {
+  padding-block: 20px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* --- Движение --- */
+@media (prefers-reduced-motion: reduce) {
+  .mkt *,
+  .mkt *::before,
+  .mkt *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+  .mkt-btn--primary:hover,
+  .mkt-topic:hover,
+  .mkt-expert:hover,
+  .mkt-step:hover,
+  .mkt-deliv-item:hover {
+    transform: none;
+  }
+}

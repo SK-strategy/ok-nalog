@@ -2,7 +2,7 @@ import Link from 'next/link'
 
 /**
  * Landing footer (brief §4). Mounted by app/page.tsx only — product routes
- * have no footer. Three columns: legal entity details, documents, contacts.
+ * have no footer. Тёмный, из принятого превью: юрлицо, документы, контакты.
  */
 
 // TODO: подставить ссылки на соцсети.
@@ -16,25 +16,23 @@ const SOCIALS = [
 
 export function SiteFooter() {
   return (
-    <footer className="border-separator border-t">
-      <div className="mx-auto grid max-w-5xl gap-8 px-4 py-10 sm:grid-cols-3 sm:px-6">
-        <div className="flex flex-col gap-2">
+    <footer className="mkt mkt-footer">
+      <div className="mkt-wrap mkt-footer-grid">
+        <div className="mkt-footer-col">
           {/* eslint-disable-next-line @next/next/no-img-element -- локальный SVG-логотип */}
-          <img src="/logo.svg" alt="ОК, налог.нет" className="h-6 w-auto self-start" />
-          <p className="text-text-soft text-[13px] leading-relaxed">
+          <img src="/logo.svg" alt="ОК, налог.нет" className="mkt-footer-logo" />
+          <p className="mkt-footer-note">
             Платформа налоговой экспертизы. Эксперты контрольных подразделений ФНС.
           </p>
-          <p className="text-hint text-xs leading-relaxed">
+          <p className="mkt-footer-legal">
             ИП Персиянов Константин Андреевич
             <br />
             ИНН 702400928036 · ОГРНИП 326700000034158
           </p>
         </div>
 
-        <nav className="flex flex-col gap-2" aria-label="Документы">
-          <span className="text-hint text-[12px] font-bold tracking-[0.06em] uppercase">
-            Документы
-          </span>
+        <nav className="mkt-footer-col" aria-label="Документы">
+          <span className="mkt-footer-heading">Документы</span>
           <FooterLink href="/oferta">Пользовательское соглашение</FooterLink>
           <FooterLink href="/politika">Политика конфиденциальности</FooterLink>
           <FooterLink href="/soglasie">Согласие на обработку персональных данных</FooterLink>
@@ -45,39 +43,26 @@ export function SiteFooter() {
           <FooterLink href="/dogovor-ekspertov">Договор для экспертов</FooterLink>
         </nav>
 
-        <div className="flex flex-col gap-3">
-          <span className="text-hint text-[12px] font-bold tracking-[0.06em] uppercase">
-            Контакты
-          </span>
-          <p className="text-text-soft text-[13px] leading-relaxed">
-            <a
-              href="mailto:oknalog@mail.ru"
-              className="hover:text-foreground focus-visible:ring-ring/50 rounded-sm outline-none
-                focus-visible:ring-[3px]"
-            >
+        <div className="mkt-footer-col">
+          <span className="mkt-footer-heading">Контакты</span>
+          <p className="mkt-footer-note">
+            <a href="mailto:oknalog@mail.ru" className="mkt-footer-link">
               oknalog@mail.ru
             </a>
-            <br />
             Томская область
           </p>
-          <div className="flex items-center gap-3">
+          <div className="mkt-socials">
             {SOCIALS.map(({ name, href, icon: Icon }) => (
-              <a
-                key={name}
-                href={href}
-                aria-label={name}
-                className="text-text-soft hover:text-foreground focus-visible:ring-ring/50
-                  rounded-sm outline-none focus-visible:ring-[3px]"
-              >
+              <a key={name} href={href} aria-label={name}>
                 <Icon />
               </a>
             ))}
           </div>
         </div>
       </div>
-      <div className="border-separator border-t">
-        <div className="text-hint mx-auto max-w-5xl px-4 py-4 text-xs sm:px-6">
-          © 2026 ОК, налог.нет
+      <div className="mkt-footer-bottom">
+        <div className="mkt-wrap">
+          <p>© 2026 ОК, налог.нет</p>
         </div>
       </div>
     </footer>
@@ -86,11 +71,7 @@ export function SiteFooter() {
 
 function FooterLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link
-      href={href}
-      className="text-text-soft hover:text-foreground focus-visible:ring-ring/50 rounded-sm
-        text-[13px] outline-none focus-visible:ring-[3px]"
-    >
+    <Link href={href} className="mkt-footer-link">
       {children}
     </Link>
   )

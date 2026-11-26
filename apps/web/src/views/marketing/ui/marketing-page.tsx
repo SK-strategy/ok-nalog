@@ -11,26 +11,53 @@ import { ProofStrip } from './sections/proof-strip'
 import { Situations } from './sections/situations'
 import { Steps } from './sections/steps'
 
+import './marketing.css'
+
 /**
  * Landing composition. Server component: every section is RSC except the
  * marked client islands (LandingCTA, situations catalog, FAQ accordion).
- * Sections land one at a time; vertical rhythm 64px between them (brief §6).
+ * Секции s1–s6 перенесены один в один из принятого preview/style-preview.html;
+ * s7–s12 — прежняя разметка, палитра подтянута токенами .mkt в marketing.css.
  */
 export function MarketingPage() {
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-16 px-4 py-12 sm:px-6 sm:py-16">
+    <main className="mkt">
       <Hero />
       <ProofStrip />
       <Situations />
       <Steps />
       <Deliverables />
       <Experts />
-      <Founder />
-      <Comparison />
-      <DopPrinciples />
-      <Privacy />
-      <Faq />
-      <FinalCta />
+      <div className="mkt-sec mkt-sec--white">
+        <div className="mkt-wrap">
+          <Founder />
+        </div>
+      </div>
+      <div className="mkt-sec mkt-sec--tint">
+        <div className="mkt-wrap">
+          <Comparison />
+        </div>
+      </div>
+      <div className="mkt-sec mkt-sec--white">
+        <div className="mkt-wrap">
+          <DopPrinciples />
+        </div>
+      </div>
+      <div className="mkt-sec">
+        <div className="mkt-wrap">
+          <Privacy />
+        </div>
+      </div>
+      <div className="mkt-sec mkt-sec--white">
+        <div className="mkt-wrap">
+          <Faq />
+        </div>
+      </div>
+      <div className="mkt-sec mkt-sec--tint">
+        <div className="mkt-wrap">
+          <FinalCta />
+        </div>
+      </div>
     </main>
   )
 }

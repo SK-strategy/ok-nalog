@@ -3,63 +3,49 @@ import { User } from 'lucide-react'
 import { EXPERT_STATUS_LABEL, EXPERTS, EXPERTS_INTRO } from '../../model/content'
 
 /**
- * Section 6 — experts. Anonymous dossiers (brief §2 + уточнения заказчика):
- * mono "ДОСЬЕ NN" label, blurred gradient avatar that sharpens on hover,
- * status stamp, role/function/tenure/scale fields. RSC.
+ * Section 6 — experts, перенос из preview: досье без лиц, единая заглушка
+ * аватара, моно-ключи, статус плашкой.
  */
 export function Experts() {
   return (
-    <section id="experts" className="scroll-mt-20">
-      <h2 className="text-foreground text-center text-2xl font-bold tracking-tight">
-        {EXPERTS_INTRO.title}
-      </h2>
-      <p className="text-text-soft mx-auto mt-3 max-w-2xl text-center text-base leading-relaxed">
-        {EXPERTS_INTRO.lead} Работают или работали в контрольных подразделениях ФНС.
-      </p>
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {EXPERTS.map((expert) => (
-          <article
-            key={expert.id}
-            className="group bg-card flex flex-col gap-4 rounded-2xl border p-5"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div
-                  className="bg-secondary text-hint flex size-14 shrink-0 items-center
-                    justify-center rounded-2xl"
-                >
-                  <User className="size-7" strokeWidth={1.6} aria-hidden />
-                </div>
-                <div className="whitespace-nowrap">
-                  <div className="text-hint font-mono text-[11px] tracking-[0.08em] uppercase">
-                    Досье {expert.id}
-                  </div>
-                  <div className="text-foreground mt-0.5 text-sm font-bold">
-                    Эксперт №{expert.id} · {expert.name}
-                  </div>
-                </div>
-              </div>
-              <span
-                className={
-                  expert.status === 'active'
-                    ? `border-primary/40 text-primary shrink-0 -rotate-2 rounded-md border px-2
-                      py-0.5 text-[11px] font-bold tracking-wide whitespace-nowrap uppercase`
-                    : `border-separator-strong text-text-soft shrink-0 -rotate-2 rounded-md border
-                      px-2 py-0.5 text-[11px] font-bold tracking-wide whitespace-nowrap uppercase`
-                }
-              >
-                {EXPERT_STATUS_LABEL[expert.status]}
-              </span>
-            </div>
+    <section id="experts" className="mkt-sec mkt-sec--tint scroll-mt-20">
+      <div className="mkt-wrap">
+        <div className="mkt-sec-head">
+          <span className="mkt-mono">Команда</span>
+          <h2>{EXPERTS_INTRO.title}</h2>
+          <p className="mkt-lead">
+            {EXPERTS_INTRO.lead} Работают или работали в контрольных подразделениях ФНС.
+          </p>
+        </div>
 
-            <dl className="flex flex-col gap-2">
-              <Field label="Должность" value={expert.position} />
-              <Field label="Функция" value={expert.func} />
-              <Field label="Стаж" value={expert.experience} />
-              <Field label="Масштаб" value={expert.scale} />
-            </dl>
-          </article>
-        ))}
+        <div className="mkt-experts">
+          {EXPERTS.map((expert) => (
+            <article className="mkt-expert" key={expert.id}>
+              <div className="mkt-expert-top">
+                <div className="mkt-expert-id">
+                  <span className="mkt-avatar" aria-hidden="true">
+                    <User size={24} strokeWidth={1.5} />
+                  </span>
+                  <span>
+                    <span className="mkt-mono mkt-dossier">Досье {expert.id}</span>
+                    <span className="mkt-expert-name">
+                      Эксперт №{expert.id} · {expert.name}
+                    </span>
+                  </span>
+                </div>
+                <span className={`mkt-status mkt-status--${expert.status}`}>
+                  {EXPERT_STATUS_LABEL[expert.status]}
+                </span>
+              </div>
+              <dl className="mkt-fields">
+                <Field label="Должность" value={expert.position} />
+                <Field label="Функция" value={expert.func} />
+                <Field label="Стаж" value={expert.experience} />
+                <Field label="Масштаб" value={expert.scale} />
+              </dl>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   )
@@ -67,14 +53,9 @@ export function Experts() {
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      className="flex flex-col items-start gap-0.5 sm:flex-row sm:items-baseline sm:justify-between
-        sm:gap-3"
-    >
-      <dt className="text-hint shrink-0 text-xs">{label}</dt>
-      <dd className="text-foreground text-left text-[13px] leading-snug font-medium sm:text-right">
-        {value}
-      </dd>
+    <div className="mkt-field">
+      <dt>{label}</dt>
+      <dd>{value}</dd>
     </div>
   )
 }

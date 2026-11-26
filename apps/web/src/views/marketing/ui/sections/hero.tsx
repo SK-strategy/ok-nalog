@@ -1,37 +1,50 @@
+import Image from 'next/image'
 import Link from 'next/link'
-
-import { Button } from '@tax-assistant/ui/button'
 
 import { HERO } from '../../model/content'
 import { LandingCTA } from '../landing-cta'
 
 /**
- * Section 1 — hero. Centered, max-w-3xl, 48px/30px H1, soft accent shadow
- * under the primary CTA (brief §4). RSC; session logic lives in LandingCTA.
+ * Section 1 — hero, перенос из preview/style-preview.html. Левая колонка:
+ * eyebrow, H1 с красными акцентами, подзаголовок, CTA, моно-строка доверия.
+ * Правая: скан требования с размытием юрлица (только ПК). RSC; сессия — в
+ * LandingCTA.
  */
 export function Hero() {
   return (
-    <section className="flex flex-col items-center gap-6 text-center">
-      <span
-        className="bg-primary-soft text-primary inline-flex items-center gap-1.5 rounded-full px-3
-          py-1 text-[12px] font-semibold tracking-wide uppercase"
-      >
-        {HERO.badge}
-      </span>
-      <h1
-        className="max-w-3xl text-3xl leading-tight font-bold tracking-tight text-[#1b2d51]
-          sm:text-5xl"
-      >
-        {HERO.title}
-      </h1>
-      <p className="text-text-soft max-w-2xl text-base leading-relaxed sm:text-lg">
-        {HERO.subtitle}
-      </p>
-      <div className="flex flex-col items-center gap-3 sm:flex-row">
-        <LandingCTA />
-        <Button asChild size="lg" variant="outline">
-          <Link href="#how">{HERO.ctaSecondary}</Link>
-        </Button>
+    <section className="mkt-sec mkt-sec--white">
+      <div className="mkt-wrap mkt-hero">
+        <div>
+          <p className="mkt-eyebrow">{HERO.badge}</p>
+          <h1>
+            Пришло требование из <span className="mkt-urgent">ФНС</span>? Получи в течении{' '}
+            <span className="mkt-urgent">24 часов</span> ответ от эксперта, который сам работал в{' '}
+            <span className="mkt-urgent">системе</span>
+          </h1>
+          <p className="mkt-hero-lead">{HERO.subtitle}</p>
+          <div className="mkt-hero-actions">
+            <LandingCTA />
+            <Link className="mkt-btn mkt-btn--secondary" href="#how">
+              {HERO.ctaSecondary}
+            </Link>
+          </div>
+          <p className="mkt-mono mkt-hero-trust">Без предоплаты · Договор · NDA</p>
+        </div>
+
+        <figure className="mkt-hero-art">
+          <div className="mkt-art-plate">
+            <Image
+              src="/trebov.png"
+              width={1394}
+              height={1644}
+              alt="Скан требования ФНС о представлении пояснений"
+              priority
+            />
+            <span className="mkt-art-mask" aria-hidden="true" />
+          </div>
+          <span className="mkt-art-tag">Входящее · ФНС</span>
+          <span className="mkt-art-stamp">Принято</span>
+        </figure>
       </div>
     </section>
   )

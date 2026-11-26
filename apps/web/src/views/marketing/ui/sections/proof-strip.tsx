@@ -1,21 +1,19 @@
 import { PROOF } from '../../model/content'
 
-/**
- * Section 2 — proof strip. 4 columns, 2×2 on mobile, hairline dividers via
- * gap-px over the separator color (brief §4). RSC.
- */
+/** Section 2 — proof strip, перенос из preview: 4 ячейки, моно-номера 01–04. */
 export function ProofStrip() {
   return (
-    <section aria-label="Цифры">
-      <div
-        className="bg-separator grid grid-cols-2 gap-px overflow-hidden rounded-2xl sm:grid-cols-4"
-      >
-        {PROOF.map((item) => (
-          <div key={item.value} className="bg-background flex flex-col gap-1 p-5 text-center">
-            <div className="text-foreground text-xl font-bold tracking-tight">{item.value}</div>
-            <div className="text-text-soft text-[13px] leading-snug">{item.label}</div>
-          </div>
-        ))}
+    <section aria-label="Цифры" className="mkt-sec mkt-sec--tint">
+      <div className="mkt-wrap">
+        <div className="mkt-proof">
+          {PROOF.map((item, i) => (
+            <div className="mkt-proof-cell" key={item.value}>
+              <span className="mkt-mono mkt-proof-num">{String(i + 1).padStart(2, '0')}</span>
+              <div className="mkt-proof-value">{item.value}</div>
+              <div className="mkt-proof-label">{item.label}</div>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   )
