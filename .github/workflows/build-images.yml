@@ -80,3 +80,29 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ghcr.io/${{ steps.owner.outputs.name }}/ok-nalog-deploy:latest
+
+  deploy:
+    # Автовыкат на прод после сборки образов: сервер сам тянет свежие образы
+    # и пересоздаёт web/admin (deploy/server/update.sh). Функции Convex этот
+    # джоб не трогает — для них отдельный workflow convex-deploy.yml.
+    # Требует секрет DEPLOY_SSH_KEY (приватный ключ с доступом root@прод-сервер).
+    needs: apps
+    runs-on: ubuntu-latest
+    # Не выкатываем, если секрет ещё не заведён — сборка образов при этом
+    # остаётся зелёной, как раньше.
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    steps:
+      - name: Update production server
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H 138.16.183.89 >> ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes root@138.16.183.89 'bash /opt/ok-nalog/update.sh'
+
+      - name: Smoke check
+        run: |
+          sleep 5
+          curl -fsS -o /dev/null -w 'site: %{http_code}\n' --retry 5 --retry-all-errors --retry-delay 4 https://oknalog.net/
