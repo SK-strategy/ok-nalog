@@ -20,7 +20,7 @@ export function Hero() {
       </span>
       <h1
         className="max-w-3xl text-3xl leading-tight font-bold tracking-tight text-[#1b2d51]
-          uppercase sm:text-5xl"
+          sm:text-5xl"
       >
         {HERO.title}
       </h1>
