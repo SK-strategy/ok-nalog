@@ -836,3 +836,153 @@
     transform: none;
   }
 }
+
+/* --- s7 · Основатель (вариант из preview/founder-block.html) --- */
+.mkt-founder {
+  display: grid;
+  gap: 48px;
+  align-items: center;
+}
+@media (min-width: 1024px) {
+  .mkt-founder {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 72px;
+  }
+}
+
+.mkt-founder-art {
+  position: relative;
+  max-width: 380px;
+  margin-inline: auto;
+  width: 100%;
+}
+@media (min-width: 1024px) {
+  .mkt-founder-art {
+    max-width: 460px;
+  }
+}
+
+.mkt-founder-art::before {
+  content: '';
+  position: absolute;
+  inset: 24px -18px -18px 24px;
+  border-radius: var(--mkt-r-panel);
+  background: var(--mkt-accent-soft);
+  z-index: 0;
+}
+
+.mkt-founder-photo {
+  position: relative;
+  z-index: 1;
+  border-radius: var(--mkt-r-panel);
+  overflow: hidden;
+  box-shadow: var(--mkt-shadow-lift);
+  background: var(--mkt-surface);
+}
+.mkt-founder-photo img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.mkt-founder-tag {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 2;
+  padding: 7px 14px;
+  border-radius: var(--mkt-r-chip);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: var(--mkt-shadow-card);
+  font-family: var(--mkt-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mkt-accent-deep);
+}
+
+.mkt-founder-quote {
+  position: relative;
+  z-index: 3;
+  margin: -56px 8px 0 32px;
+  padding: 22px 24px;
+  border-radius: var(--mkt-r-card);
+  background: #fff;
+  box-shadow: var(--mkt-shadow-lift);
+}
+@media (min-width: 1024px) {
+  .mkt-founder-quote {
+    margin: -72px -16px 0 48px;
+  }
+}
+.mkt-founder-quote p {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+}
+.mkt-founder-quote p::before {
+  content: '«';
+  color: var(--mkt-accent);
+  font-size: 34px;
+  line-height: 0;
+  vertical-align: -6px;
+  margin-right: 4px;
+  font-weight: 800;
+}
+.mkt-founder-quote .mkt-mono {
+  display: block;
+  margin-top: 12px;
+}
+
+.mkt-founder-name {
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-top: 12px;
+}
+.mkt-founder-role {
+  margin-top: 12px;
+  font-size: 18px;
+  color: var(--mkt-ink-soft);
+  max-width: 46ch;
+}
+
+.mkt-founder-facts {
+  margin-top: 28px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+}
+.mkt-founder-facts li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 16px;
+  border-radius: var(--mkt-r-chip);
+  background: var(--mkt-surface);
+  font-size: 14px;
+  font-weight: 600;
+}
+.mkt-founder-facts li::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mkt-accent);
+  flex: none;
+}
+
+.mkt-founder-note {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--mkt-line);
+  max-width: 52ch;
+  font-size: 15px;
+  color: var(--mkt-ink-soft);
+}
