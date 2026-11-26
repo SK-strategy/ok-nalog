@@ -19,8 +19,8 @@ export function Hero() {
         {HERO.badge}
       </span>
       <h1
-        className="text-foreground max-w-3xl text-3xl leading-tight font-bold tracking-tight
-          sm:text-5xl"
+        className="max-w-3xl text-3xl leading-tight font-bold tracking-tight text-[#1b2d51]
+          uppercase sm:text-5xl"
       >
         {HERO.title}
       </h1>
