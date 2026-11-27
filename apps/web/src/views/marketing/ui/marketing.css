@@ -227,6 +227,7 @@
 
 .mkt-hero h1 {
   max-width: 100%;
+  color: #1b2d51; /* фон логотипа */
 }
 .mkt-urgent {
   color: var(--mkt-urgent);
@@ -295,13 +296,13 @@
   height: auto;
 }
 
-/* Размытие названия юрлица; ИНН/КПП, адрес, номер и дата читаемы */
+/* Размытие названия юрлица и ИНН/КПП; адрес, номер и дата читаемы */
 .mkt-art-mask {
   position: absolute;
   left: 43.5%;
   top: 6.4%;
   width: 44.5%;
-  height: 5.2%;
+  height: 6.9%;
   z-index: 2;
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
@@ -316,14 +317,14 @@
   z-index: 2;
   padding: 7px 14px;
   border-radius: var(--mkt-r-chip);
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--mkt-accent);
   box-shadow: var(--mkt-shadow-card);
   font-family: var(--mkt-font-mono);
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--mkt-accent-deep);
+  color: #fff;
 }
 
 .mkt-art-stamp {

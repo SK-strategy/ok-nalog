@@ -17,9 +17,8 @@ export function Hero() {
         <div>
           <p className="mkt-eyebrow">{HERO.badge}</p>
           <h1>
-            Пришло требование из <span className="mkt-urgent">ФНС</span>? Получи в течении{' '}
-            <span className="mkt-urgent">24 часов</span> ответ от эксперта, который сам работал в{' '}
-            <span className="mkt-urgent">системе</span>
+            Пришло требование из <span className="mkt-urgent">ФНС</span>? Получи в течении 24 часов
+            ответ от эксперта, который сам работал в системе
           </h1>
           <p className="mkt-hero-lead">{HERO.subtitle}</p>
           <div className="mkt-hero-actions">
