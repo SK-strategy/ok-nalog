@@ -303,6 +303,7 @@
   overflow: hidden;
   background: var(--mkt-surface);
   box-shadow: var(--mkt-shadow-lift);
+  transform: rotate(-2deg);
 }
 .mkt-art-plate img {
   display: block;
@@ -310,7 +311,8 @@
   height: auto;
 }
 
-/* Размытие названия юрлица и ИНН/КПП; адрес, номер и дата читаемы */
+/* Ретушь названия юрлица и ИНН/КПП — эффект из preview/style-preview-kimi.html,
+   область расширена до строки ИНН/КПП; адрес, номер и дата читаемы */
 .mkt-art-mask {
   position: absolute;
   left: 42.5%;
@@ -318,43 +320,45 @@
   width: 46.5%;
   height: 8.2%;
   z-index: 2;
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  background: rgba(255, 255, 255, 0.12);
   pointer-events: none;
 }
 
 .mkt-art-tag {
   position: absolute;
-  top: 18px;
-  left: 18px;
+  top: 12px;
+  left: -8px;
   z-index: 2;
-  padding: 7px 14px;
-  border-radius: var(--mkt-r-chip);
-  background: var(--mkt-accent);
-  box-shadow: var(--mkt-shadow-card);
-  font-family: var(--mkt-font-mono);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #fff;
-}
-
-.mkt-art-stamp {
-  position: absolute;
-  right: 18px;
-  bottom: 18px;
-  z-index: 2;
-  padding: 8px 16px;
-  border-radius: var(--mkt-r-chip);
-  background: var(--mkt-ink);
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #2a6fa8;
   font-family: var(--mkt-font-mono);
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: #fff;
+}
+
+.mkt-art-stamp {
+  position: absolute;
+  right: 4%;
+  bottom: 10%;
+  z-index: 2;
+  padding: 4px 12px;
+  border: 3px solid rgba(42, 111, 168, 0.55);
+  border-radius: 4px;
+  background: transparent;
+  font-family: var(--mkt-font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(42, 111, 168, 0.55);
+  transform: rotate(-12deg);
+  mix-blend-mode: multiply;
 }
 
 /* --- s2 · Полоса цифр --- */
