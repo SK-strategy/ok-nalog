@@ -17,8 +17,10 @@ export function Hero() {
         <div className="mkt-hero-copy">
           <p className="mkt-eyebrow">{HERO.badge}</p>
           <h1>
-            Пришло требование из <span className="mkt-urgent">ФНС</span>? Получи в течении 24 часов
-            ответ от эксперта, который сам работал в налоговой системе
+            <span className="mkt-h1-line">
+              Пришло требование из <span className="mkt-urgent">ФНС</span>?
+            </span>{' '}
+            Получи в течении 24 часов ответ от эксперта из налоговой системы
           </h1>
           <p className="mkt-hero-lead">{HERO.subtitle}</p>
           <div className="mkt-hero-actions">
@@ -39,7 +41,6 @@ export function Hero() {
               alt="Скан требования ФНС о представлении пояснений"
               priority
             />
-            <span className="mkt-art-mask" aria-hidden="true" />
           </div>
           <span className="mkt-art-tag">Входящее · ФНС</span>
           <span className="mkt-art-stamp">Принято</span>
