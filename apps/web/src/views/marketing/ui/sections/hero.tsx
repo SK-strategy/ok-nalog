@@ -14,11 +14,11 @@ export function Hero() {
   return (
     <section className="mkt-sec mkt-sec--white">
       <div className="mkt-wrap mkt-hero">
-        <div>
+        <div className="mkt-hero-copy">
           <p className="mkt-eyebrow">{HERO.badge}</p>
           <h1>
             Пришло требование из <span className="mkt-urgent">ФНС</span>? Получи в течении 24 часов
-            ответ от эксперта, который сам работал в системе
+            ответ от эксперта, который сам работал в налоговой системе
           </h1>
           <p className="mkt-hero-lead">{HERO.subtitle}</p>
           <div className="mkt-hero-actions">

@@ -228,6 +228,20 @@
 .mkt-hero h1 {
   max-width: 100%;
   color: #1b2d51; /* фон логотипа */
+  font-size: clamp(24px, 3.4vw, 40px); /* компактнее базового H1 */
+  text-align: center;
+  margin-inline: auto;
+}
+
+/* Колонка hero центрируется */
+.mkt-hero-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.mkt-hero-copy .mkt-hero-lead {
+  text-align: center;
 }
 .mkt-urgent {
   color: var(--mkt-urgent);
@@ -299,14 +313,14 @@
 /* Размытие названия юрлица и ИНН/КПП; адрес, номер и дата читаемы */
 .mkt-art-mask {
   position: absolute;
-  left: 43.5%;
-  top: 6.4%;
-  width: 44.5%;
-  height: 6.9%;
+  left: 42.5%;
+  top: 7%;
+  width: 46.5%;
+  height: 8.2%;
   z-index: 2;
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.5);
   pointer-events: none;
 }
 
